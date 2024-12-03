@@ -1,110 +1,108 @@
-/* General Styles */
 body {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
-  line-height: 1.5;
-  color: #333;
 }
 
-header {
-  background-color: #f8f9fa;
-  padding: 10px 20px;
-}
-
-.nav-bar {
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 10px 20px;
+  background-color: #003366;
+  color: white;
 }
 
-.nav-links {
+.header .logo {
   display: flex;
-  gap: 15px;
+  align-items: center;
+  gap: 10px;
 }
 
-.header-option {
+.header .navbar a {
+  color: white;
   text-decoration: none;
-  color: #333;
-  font-weight: bold;
+  margin: 0 10px;
 }
 
-.logo {
-  font-size: 24px;
+.header .navbar .login-btn {
+  padding: 5px 10px;
+  background-color: #ff6600;
+  border: none;
+  color: white;
+  cursor: pointer;
 }
 
-.image-container {
+.carousel {
   position: relative;
-  text-align: center;
+  overflow: hidden;
 }
 
-.image-container img {
-  width: 100%;
-  height: auto;
+.carousel .slide {
+  display: none;
+  height: 500px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
 }
 
-.banner-text {
+.carousel .slide.active {
+  display: block;
+}
+
+.carousel .overlay {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 20px;
+  border-radius: 5px;
+}
+
+.carousel button {
   position: absolute;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #fff;
-  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
-}
-
-.welcome-section {
-  text-align: center;
-  margin: 20px 0;
-}
-
-.slogan {
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
   font-size: 18px;
 }
 
-.slogan-highlight {
-  font-size: 24px;
-  font-weight: bold;
+.carousel .prev {
+  left: 10px;
 }
 
-.container {
+.carousel .next {
+  right: 10px;
+}
+
+.info {
+  padding: 20px;
+  text-align: center;
+}
+
+.info .stats {
   display: flex;
   justify-content: center;
   gap: 20px;
-  margin: 20px;
-  flex-wrap: wrap;
+  margin-top: 20px;
 }
 
-.circular-container {
-  text-align: center;
-}
-
-.circular-container img {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.secondary-img img {
-  width: 100%;
-  max-width: 500px;
-  display: block;
-  margin: 20px auto;
-}
-
-.what-we-do {
-  text-align: center;
-  margin: 40px 20px;
-}
-
-.description {
-  text-align: justify;
-  margin: 20px auto;
-  max-width: 800px;
-  padding: 10px;
-  background-color: #f1f1f1;
+.info .stats .stat {
+  background-color: #f9f9f9;
+  padding: 20px;
   border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
 }
 
-/* Responsive Design */
-@media screen and (max
+.footer {
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 10px;
+}

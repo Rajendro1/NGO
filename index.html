@@ -4,84 +4,144 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NGO Header</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Your NGO Name Here</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #333;
+      background-color: #f4f4f4;
+    }
+
+    header {
+      background: #005f73;
+      color: #fff;
+      padding: 10px 20px;
+      text-align: center;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      background: #0a9396;
+      padding: 10px 0;
+    }
+
+    nav a {
+      color: white;
+      padding: 0 15px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .hero {
+      background: url('images/ngo_picture3.webp') no-repeat center center/cover;
+      color: white;
+      height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      transition: all 1s ease-in-out;
+      /* General transition for all changes */
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 40px;
+    }
+
+    .content {
+      padding: 20px;
+      text-align: center;
+    }
+
+    .donate-button {
+      display: inline-block;
+      padding: 10px 20px;
+      margin: 20px 0;
+      background-color: gold;
+      color: black;
+      text-decoration: none;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+    }
+
+    footer {
+      background: #023047;
+      color: white;
+      text-align: center;
+      padding: 10px 0;
+      position: absolute;
+      width: 100%;
+      bottom: 0;
+    }
+  </style>
 </head>
 
 <body>
-  <!-- Header Navigation -->
   <header>
-    <nav class="nav-bar">
-      <h1 class="logo">N G O</h1>
-      <div class="nav-links">
-        <a href="profile.html" class="header-option">Home</a>
-        <a href="profile.html" class="header-option">Profile</a>
-        <a href="profile.html" class="header-option">Gallery</a>
-        <a href="profile.html" class="header-option">Join Us</a>
-      </div>
-    </nav>
+    <h1>Your NGO Name</h1>
   </header>
+  <nav>
+    <a href="#home">Home</a>
+    <a href="#impact">Our Impact</a>
+    <a href="#donate">Donate</a>
+    <a href="#contact">Contact</a>
+  </nav>
+  <div class="hero" id="hero">
+    <h1>Making a Difference</h1>
+    <p>Join us in our mission to change lives.</p>
+    <button class="donate-button">Donate Now</button>
+  </div>
+  <div class="content">
+    <h2>About Us</h2>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore
+      magna aliqua.</p>
+  </div>
+  <footer>
+    <p>Copyright © Your NGO Name 2020</p>
+  </footer>
+  <script>
+    const images = [
+      'images/ngo_picture1.jpg',
+      'images/ngo_picture2.jpg',
+      'images/ngo_picture3.webp'
+    ];
+    let currentIndex = 0;
 
-  <!-- Main Banner Section -->
-  <section class="image-container">
-    <img src="images/ngo_picture2.jpg" alt="Main Image">
-    <div class="banner-text">
-      <h2>HOPE IN</h2>
-      <h1>ACTION</h1>
-      <p>
-        With your support, we can do more. Your donation, no matter how much, will help us reach more poor communities
-        to feed them and empower them.
-      </p>
-    </div>
-  </section>
+    function changeBackground() {
+      const heroSection = document.getElementById('hero');
+      switch (currentIndex % 3) {
+        case 0: // Fade transition
+          heroSection.style.opacity = 0;
+          setTimeout(() => {
+            heroSection.style.backgroundImage = `url('${images[currentIndex]}')`;
+            heroSection.style.opacity = 1;
+          }, 1000);
+          break;
+        case 1: // Slide transition
+          heroSection.style.transform = 'translateX(-100%)';
+          setTimeout(() => {
+            heroSection.style.backgroundImage = `url('${images[currentIndex]}')`;
+            heroSection.style.transform = 'translateX(0)';
+          }, 1000);
+          break;
+        case 2: // Zoom transition
+          heroSection.style.transform = 'scale(1.2)';
+          setTimeout(() => {
+            heroSection.style.backgroundImage = `url('${images[currentIndex]}')`;
+            heroSection.style.transform = 'scale(1)';
+          }, 1000);
+          break;
+      }
+      currentIndex = (currentIndex + 1) % images.length;
+    }
 
-  <!-- Welcome Section -->
-  <section class="welcome-section">
-    <p class="title">Welcome to NGO</p>
-    <p class="slogan">We Believe That We Can Eradicate</p>
-    <p class="slogan-highlight">Poverty</p>
-    <p class="slogan-highlight">With You</p>
-  </section>
-
-  <!-- Circular Image Section -->
-  <section class="container">
-    <div class="circular-container">
-      <img src="images/care.webp" alt="Care">
-      <h3>Support</h3>
-    </div>
-    <div class="circular-container">
-      <img src="images/donate.jpg" alt="Donate">
-      <h3>Donate</h3>
-    </div>
-    <div class="circular-container">
-      <img src="images/prayer1.webp" alt="Prayer">
-      <h3>Prayer</h3>
-    </div>
-  </section>
-
-  <!-- Secondary Image Section -->
-  <section class="secondary-img">
-    <img src="images/WhatsApp_Image_2024-12-03_at_8.37.19_AM-removebg-preview.png" alt="Secondary Image">
-  </section>
-
-  <!-- What We Do Section -->
-  <section class="what-we-do">
-    <div class="what-title">
-      <span style="color: orange;">What</span>
-      <span style="color: aliceblue;">We</span>
-      <span style="color: green;">Do</span>
-    </div>
-    <pre class="description">
-      At [NGO Name], we believe in creating lasting change by 
-      empowering communities, uplifting the vulnerable, 
-      and advocating for a sustainable future. 
-      
-      Founded on the principles of compassion, equality, and 
-      inclusion, our mission is to address pressing social, 
-      economic, and environmental challenges through innovative 
-      solutions and collaborative efforts.
-    </pre>
-  </section>
+    setInterval(changeBackground, 5000);
+  </script>
 </body>
 
 </html>
