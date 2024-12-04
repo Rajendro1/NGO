@@ -11,28 +11,43 @@
       margin: 0;
       padding: 0;
       color: #333;
-      background-color: #f4f4f4;
+      background-color: white;
     }
 
     header {
-      background: #2c3e50;
-      color: #ecf0f1;
-      padding: 10px 20px;
-      text-align: center;
-    }
-
-    nav {
       display: flex;
-      justify-content: center;
-      background: #8e44ad;
-      padding: 10px 0;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      padding: 10px 20px;
     }
 
-    nav a {
-      color: #ecf0f1;
-      padding: 0 15px;
+    .logo {
+      height: 50px;
+      width: auto;
+    }
+
+    .menu-button {
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .hidden-menu {
+      display: none;
+      position: absolute;
+      right: 20px;
+      top: 60px;
+      background: white;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      padding: 10px;
+      z-index: 1000;
+    }
+
+    .hidden-menu a {
+      display: block;
+      padding: 10px;
       text-decoration: none;
-      font-weight: bold;
+      color: black;
     }
 
     .hero {
@@ -42,26 +57,34 @@
       align-items: center;
       justify-content: center;
       flex-direction: column;
-    }
-
-    .hero-background {
-      position: absolute;
-      width: 100%;
-      height: 100%;
       background: url('images/ngo_picture3.webp') no-repeat center center/cover;
       transition: all 1s ease-in-out;
-      z-index: -1;
     }
 
-    .hero-content {
-      position: relative;
-      color: white;
-      z-index: 1;
+    .nav-images {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
     }
 
-    .hero h1 {
-      margin: 0;
-      font-size: 40px;
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0 10px;
+    }
+
+    .nav-item img {
+      width: 100%;
+      /* Make images responsive */
+      max-width: 200px;
+      /* Maximum width */
+    }
+
+    .nav-item span {
+      margin-top: 5px;
+      color: #333;
+      font-size: 14px;
     }
 
     .content {
@@ -90,25 +113,57 @@
       width: 100%;
       bottom: 0;
     }
+
+    /* Media Queries */
+    @media (max-width: 600px) {
+      .nav-item img {
+        max-width: 100px;
+        /* Smaller max width for mobile */
+      }
+    }
+
+    @media (min-width: 601px) {
+      .nav-item img {
+        max-width: 200px;
+        /* Larger max width for desktop */
+      }
+    }
   </style>
 </head>
 
 <body>
   <header>
+    <img src="images/logo.png" alt="NGO Logo" class="logo">
     <h1>Your NGO Name</h1>
+    <div class="menu-button" onclick="toggleMenu()">☰</div>
+    <div class="hidden-menu" id="hiddenMenu">
+      <a href="#login">Login</a>
+      <a href="#signup">Signup</a>
+    </div>
   </header>
-  <nav>
-    <a href="#home">Home</a>
-    <a href="#impact">Our Impact</a>
-    <a href="#donate">Donate</a>
-    <a href="#contact">Contact</a>
-  </nav>
   <div class="hero" id="hero">
-    <div class="hero-background" id="backgroundImage"></div>
     <div class="hero-content">
       <h1>Making a Difference</h1>
       <p>Join us in our mission to change lives.</p>
       <button class="donate-button">Donate Now</button>
+    </div>
+  </div>
+  <div class="nav-images">
+    <div class="nav-item">
+      <img src="images/prayer1.webp" alt="Home">
+      <span>Home</span>
+    </div>
+    <div class="nav-item">
+      <img src="images/prayer1.png" alt="Our Impact">
+      <span>Our Impact</span>
+    </div>
+    <div class="nav-item">
+      <img src="images/donate.jpg" alt="Donate">
+      <span>Donate</span>
+    </div>
+    <div class="nav-item">
+      <img src="images/support.png" alt="Contact">
+      <span>Contact</span>
     </div>
   </div>
   <div class="content">
@@ -128,31 +183,36 @@
     let currentIndex = 0;
 
     function changeBackground() {
-      const backgroundImage = document.getElementById('backgroundImage');
+      const heroSection = document.querySelector('.hero'); // Ensure this targets the correct element
       switch (currentIndex % 3) {
         case 0: // Fade transition
-          backgroundImage.style.opacity = 0;
+          heroSection.style.opacity = 0;
           setTimeout(() => {
-            backgroundImage.style.backgroundImage = `url('${images[currentIndex]}')`;
-            backgroundImage.style.opacity = 1;
+            heroSection.style.backgroundImage = `url('${images[currentIndex]}')`;
+            heroSection.style.opacity = 1;
           }, 1000);
           break;
         case 1: // Slide transition
-          backgroundImage.style.transform = 'translateX(-100%)';
+          heroSection.style.transform = 'translateX(-100%)';
           setTimeout(() => {
-            backgroundImage.style.backgroundImage = `url('${images[currentIndex]}')`;
-            backgroundImage.style.transform = 'translateX(0)';
+            heroSection.style.backgroundImage = `url('${images[currentIndex]}')`;
+            heroSection.style.transform = 'translateX(0)';
           }, 1000);
           break;
         case 2: // Zoom transition
-          backgroundImage.style.transform = 'scale(1.2)';
+          heroSection.style.transform = 'scale(1.2)';
           setTimeout(() => {
-            backgroundImage.style.backgroundImage = `url('${images[currentIndex]}')`;
-            backgroundImage.style.transform = 'scale(1)';
+            heroSection.style.backgroundImage = `url('${images[currentIndex]}')`;
+            heroSection.style.transform = 'scale(1)';
           }, 1000);
           break;
       }
       currentIndex = (currentIndex + 1) % images.length;
+    }
+
+    function toggleMenu() {
+      const menu = document.getElementById('hiddenMenu');
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
     }
 
     setInterval(changeBackground, 5000);
