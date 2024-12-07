@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your NGO Name Here</title>
+  <title>ADYASAKTI - Human Welfare and Research Development Trust</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -20,11 +20,32 @@
       align-items: center;
       background: white;
       padding: 10px 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .logo {
       height: 50px;
       width: auto;
+    }
+
+    .ngo-name-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .ngo-name {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin: 0;
+    }
+
+    .ngo-subtitle {
+      font-size: 16px;
+      color: #7f8c8d;
+      margin: 0;
     }
 
     .menu-button {
@@ -76,9 +97,7 @@
 
     .nav-item img {
       width: 100%;
-      /* Make images responsive */
       max-width: 200px;
-      /* Maximum width */
     }
 
     .nav-item span {
@@ -109,23 +128,19 @@
       color: #ecf0f1;
       text-align: center;
       padding: 10px 0;
-      position: absolute;
+      position: relative;
       width: 100%;
-      bottom: 0;
     }
 
-    /* Media Queries */
     @media (max-width: 600px) {
       .nav-item img {
         max-width: 100px;
-        /* Smaller max width for mobile */
       }
     }
 
     @media (min-width: 601px) {
       .nav-item img {
         max-width: 200px;
-        /* Larger max width for desktop */
       }
     }
   </style>
@@ -134,7 +149,10 @@
 <body>
   <header>
     <img src="images/logo.png" alt="NGO Logo" class="logo">
-    <h1>Your NGO Name</h1>
+    <div class="ngo-name-container">
+      <h1 class="ngo-name">ADYASAKTI</h1>
+      <p class="ngo-subtitle">Human Welfare and Research Development Trust</p>
+    </div>
     <div class="menu-button" onclick="toggleMenu()">☰</div>
     <div class="hidden-menu" id="hiddenMenu">
       <a href="#login">Login</a>
@@ -172,7 +190,7 @@
       magna aliqua.</p>
   </div>
   <footer>
-    <p>Copyright © Your NGO Name 2020</p>
+    <p>Copyright © ADYASAKTI - Human Welfare and Research Development Trust 2024</p>
   </footer>
   <script>
     const images = [
@@ -183,23 +201,23 @@
     let currentIndex = 0;
 
     function changeBackground() {
-      const heroSection = document.querySelector('.hero'); // Ensure this targets the correct element
+      const heroSection = document.querySelector('.hero');
       switch (currentIndex % 3) {
-        case 0: // Fade transition
+        case 0:
           heroSection.style.opacity = 0;
           setTimeout(() => {
             heroSection.style.backgroundImage = `url('${images[currentIndex]}')`;
             heroSection.style.opacity = 1;
           }, 1000);
           break;
-        case 1: // Slide transition
+        case 1:
           heroSection.style.transform = 'translateX(-100%)';
           setTimeout(() => {
             heroSection.style.backgroundImage = `url('${images[currentIndex]}')`;
             heroSection.style.transform = 'translateX(0)';
           }, 1000);
           break;
-        case 2: // Zoom transition
+        case 2:
           heroSection.style.transform = 'scale(1.2)';
           setTimeout(() => {
             heroSection.style.backgroundImage = `url('${images[currentIndex]}')`;
