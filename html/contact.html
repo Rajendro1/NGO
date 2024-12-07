@@ -29,30 +29,38 @@
         }
 
         .team-member {
+            display: flex;
+            /* Aligns items horizontally */
+            align-items: center;
+            /* Aligns items vertically in the center */
             margin-top: 20px;
-            padding-left: 20px;
-            border-left: 3px solid #2c3e50;
         }
 
         .profile-pic {
             width: 80px;
             height: 80px;
-            border-radius: 50%;
-            overflow: hidden;
+            border-radius: 50%; /* This will make the container circular */
+            margin-right: 20px; /* Adds spacing between image and text */
+            overflow: hidden; /* Ensures no part of the image spills outside the circular mask */
         }
 
         .profile-pic img {
             width: 100%;
-            height: auto;
+            height: 100%; /* Changes from 'auto' to '100%' to ensure the image covers the entire circle */
+            object-fit: cover; /* Ensures the image covers the space without distorting aspect ratio */
         }
 
+
         .details {
-            margin-left: 100px;
-            margin-top: -80px;
+            margin-top: 0;
+            /* Reduces the gap */
         }
 
         .details h3 {
-            margin-top: 0;
+            margin: 0;
+            /* Removes margin from the name */
+            font-size: 18px;
+            /* Makes the name more prominent */
         }
 
         .details p {
@@ -67,6 +75,7 @@
         .contact-link:hover {
             text-decoration: underline;
         }
+
         .back-button {
             display: block;
             margin: 10px auto;
@@ -84,6 +93,7 @@
     <header>
         <h1>Contact Us</h1>
     </header>
+
     <a href="javascript:history.back()" class="back-button">Back</a>
 
     <div class="team-container">
@@ -96,24 +106,11 @@
                 <h3>Kamal Krishna Mondal</h3>
                 <p><strong>Role:</strong> Chief Executive Officer</p>
                 <p><strong>Email:</strong> <a href="mailto:kkmexe1@gmail.com">kkmexe1@gmail.com</a></p>
-                <p><strong>Education:</strong> Bachelor of Arts </p>
-                <p><strong>WhatsApp:</strong> <a href="https://wa.me/919851754966" target="_blank" class="contact-link">+91 9851754966</a></p>
+                <p><strong>Education:</strong> Bachelor of Arts</p>
+                <p><strong>WhatsApp:</strong> <a href="https://wa.me/919851754966" target="_blank"
+                        class="contact-link">+91 9851754966</a></p>
             </div>
         </div>
-        <!-- CFO -->
-        <!-- <div class="team-member">
-            <div class="profile-pic">
-                <img src="../images/cfo.jpg" alt="CFO">
-            </div>
-            <div class="details">
-                <h3>CFO Name</h3>
-                <p><strong>Role:</strong> Chief Financial Officer</p>
-                <p><strong>Email:</strong> <a href="mailto:cfo@example.com">cfo@example.com</a></p>
-                <p><strong>Education:</strong> Bachelor Of Science </p>
-                <p><strong>WhatsApp:</strong> <a href="https://wa.me/918200000000" target="_blank"
-                        class="contact-link">+91 82000 00000</a></p>
-            </div>
-        </div> -->
         <!-- Development & Fundraising Manager -->
         <div class="team-member">
             <div class="profile-pic">
@@ -124,19 +121,22 @@
                 <p><strong>Role:</strong> Development & Fundraising Manager</p>
                 <p><strong>Email:</strong> <a href="mailto:rajandroprosad@gmail.com">rajandroprosad@gmail.com</a></p>
                 <p><strong>Education:</strong> Bachelor of Technology</p>
-                <p><strong>WhatsApp:</strong> <a href="https://wa.me/918250771252" target="_blank" class="contact-link">+91 8250771252</a></p>
+                <p><strong>WhatsApp:</strong> <a href="https://wa.me/918250771252" target="_blank"
+                        class="contact-link">+91 8250771252</a></p>
             </div>
         </div>
+        <!-- IT and Technical Support -->
         <div class="team-member">
             <div class="profile-pic">
-                <img src="../images/Deep-removebg-preview.png" alt="Development Manager">
+                <img src="../images/Deep-removebg-preview.png" alt="IT Support">
             </div>
             <div class="details">
                 <h3>Deep Mondal</h3>
                 <p><strong>Role:</strong> IT and Technical Support</p>
                 <p><strong>Email:</strong> <a href="mailto:deepmon82500@gmail.com">deepmon82500@gmail.com</a></p>
                 <p><strong>Education:</strong> Bachelor of Computer Application</p>
-                <p><strong>WhatsApp:</strong> <a href="https://wa.me/918250050806" target="_blank" class="contact-link">+91 8250050806</a></p>
+                <p><strong>WhatsApp:</strong> <a href="https://wa.me/918250050806" target="_blank"
+                        class="contact-link">+91 8250050806</a></p>
             </div>
         </div>
     </div>
