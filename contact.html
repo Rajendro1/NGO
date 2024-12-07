@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us - ADYASAKTI</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background-color: #f9f9f9;
+        }
+
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .contact-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .contact-card {
+            background-color: white;
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            flex-basis: calc(50% - 20px);
+        }
+
+        .profile-pic {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            overflow: hidden;
+            margin-right: 20px;
+        }
+
+        .profile-pic img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .contact-details {
+            flex: 1;
+        }
+
+        .contact-details h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+
+        .contact-details p {
+            margin: 5px 0;
+            font-size: 16px;
+        }
+
+        .contact-details a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .contact-details a:hover {
+            text-decoration: underline;
+        }
+
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .contact-card {
+                flex-basis: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Contact Us</h1>
+    </header>
+    <main>
+        <div class="contact-container">
+            <!-- Contact 1 -->
+            <div class="contact-card">
+                <div class="profile-pic">
+                    <img src="images/KamalKrishna-removebg-preview.png" alt="Kamal Krishna Mondal">
+                </div>
+                <div class="contact-details">
+                    <h3>Kamal Krishna Mondal</h3>
+                    <p><strong>Role:</strong> Director</p>
+                    <p><strong>Email:</strong> <a href="mailto:kkmexe1@gmail.com">kkmexe1@gmail.com</a></p>
+                    <p><strong>Phone:</strong> <a href="tel:+91">+91 9851754966</a></p>
+                </div>
+            </div>
+
+            <!-- Contact 2 -->
+            <div class="contact-card">
+                <div class="profile-pic">
+                    <img src="images/Rajendro.jpeg" alt="Rajendro Sau">
+                </div>
+                <div class="contact-details">
+                    <h3>Rajendro Sau</h3>
+                    <p><strong>Role:</strong> Lead Developer </p>
+                    <p><strong>Email:</strong> <a href="mailto:rajandroprosad@gmail.com">rajandroprosad@gmail.com</a>
+                    </p>
+                    <p><strong>Phone:</strong> <a href="tel:+91 8250771252">+91 8250771252</a></p>
+                </div>
+            </div>
+
+            <!-- Contact 3 -->
+            <div class="contact-card">
+                <div class="profile-pic">
+                    <img src="images/Deep-removebg-preview.png" alt="Deep Mondal">
+                </div>
+                <div class="contact-details">
+                    <h3>Deep Mondal</h3>
+                    <p><strong>Role:</strong> Jr Developer</p>
+                    <p><strong>Email:</strong> <a
+                            href="mailto:deepmon82500@gmail.com">deepmon82500@gmail.com</a></p>
+                    <p><strong>Phone:</strong> <a href="tel:+91 8250050806">+91 8250050806</a></p>
+                </div>
+            </div>
+
+            <!-- Add more contacts here if needed -->
+        </div>
+    </main>
+    <footer>
+        <p>© 2024 ADYASAKTI - Human Welfare and Research Development Trust. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>
