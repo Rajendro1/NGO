@@ -8,185 +8,142 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
             color: #333;
             background-color: #f9f9f9;
         }
 
-        header {
+        header,
+        footer {
             background-color: #2c3e50;
             color: white;
             padding: 10px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .back-button {
-            font-size: 16px;
-            color: white;
-            text-decoration: none;
-            background: none;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-        }
-
-        .back-button:hover {
-            text-decoration: underline;
-        }
-
-        .back-icon {
-            margin-right: 5px;
-            font-weight: bold;
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 24px;
-            flex: 1;
             text-align: center;
         }
 
-        main {
-            max-width: 1200px;
-            margin: 0 auto;
+        .team-container {
+            max-width: 800px;
+            margin: 20px auto;
             padding: 20px;
-        }
-
-        .contact-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .contact-card {
-            background-color: white;
-            display: flex;
-            align-items: center;
-            padding: 20px;
-            border-radius: 8px;
+            background-color: #fff;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            flex-basis: calc(50% - 20px);
+        }
+
+        .team-member {
+            margin-top: 20px;
+            padding-left: 20px;
+            border-left: 3px solid #2c3e50;
         }
 
         .profile-pic {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             overflow: hidden;
-            margin-right: 20px;
         }
 
         .profile-pic img {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            height: auto;
         }
 
-        .contact-details {
-            flex: 1;
+        .details {
+            margin-left: 100px;
+            margin-top: -80px;
         }
 
-        .contact-details h3 {
-            margin: 0;
-            font-size: 18px;
-            color: #2c3e50;
+        .details h3 {
+            margin-top: 0;
         }
 
-        .contact-details p {
-            margin: 5px 0;
-            font-size: 16px;
+        .details p {
+            margin: 4px 0;
         }
 
-        .contact-details a {
+        .contact-link {
             color: #3498db;
             text-decoration: none;
         }
 
-        .contact-details a:hover {
+        .contact-link:hover {
             text-decoration: underline;
         }
-
-        footer {
-            background-color: #2c3e50;
+        .back-button {
+            display: block;
+            margin: 10px auto;
+            padding: 10px 20px;
+            background-color: #3498db;
             color: white;
             text-align: center;
-            padding: 10px 0;
-            margin-top: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .contact-card {
-                flex-basis: 100%;
-            }
+            text-decoration: none;
+            border-radius: 5px;
         }
     </style>
 </head>
 
 <body>
     <header>
-        <!-- Back Button -->
-        <button class="back-button" onclick="goBack()">
-            <span class="back-icon">←</span> Back
-        </button>
         <h1>Contact Us</h1>
     </header>
-    <main>
-        <div class="contact-container">
-            <!-- Contact 1 -->
-            <div class="contact-card">
-                <div class="profile-pic">
-                    <img src="../images/KamalKrishna-removebg-preview.png" alt="Kamal Krishna Mondal">
-                </div>
-                <div class="contact-details">
-                    <h3>Kamal Krishna Mondal</h3>
-                    <p><strong>Role:</strong> Director</p>
-                    <p><strong>Email:</strong> <a href="mailto:kkmexe1@gmail.com">kkmexe1@gmail.com</a></p>
-                    <p><strong>Phone:</strong> <a href="tel:+91 9851754966">+91 9851754966</a></p>
-                </div>
-            </div>
+    <a href="javascript:history.back()" class="back-button">Back</a>
 
-            <!-- Contact 2 -->
-            <div class="contact-card">
-                <div class="profile-pic">
-                    <img src="../images/Rajendro.jpeg" alt="Rajendro Sau">
-                </div>
-                <div class="contact-details">
-                    <h3>Rajendro Sau</h3>
-                    <p><strong>Role:</strong> Lead Developer</p>
-                    <p><strong>Email:</strong> <a href="mailto:rajandroprosad@gmail.com">rajandroprosad@gmail.com</a></p>
-                    <p><strong>Phone:</strong> <a href="tel:+91 8250771252">+91 8250771252</a></p>
-                </div>
+    <div class="team-container">
+        <!-- CEO -->
+        <div class="team-member">
+            <div class="profile-pic">
+                <img src="../images/KamalKrishna-removebg-preview.png" alt="CEO">
             </div>
-
-            <!-- Contact 3 -->
-            <div class="contact-card">
-                <div class="profile-pic">
-                    <img src="../images/Deep-removebg-preview.png" alt="Deep Mondal">
-                </div>
-                <div class="contact-details">
-                    <h3>Deep Mondal</h3>
-                    <p><strong>Role:</strong> Jr Developer</p>
-                    <p><strong>Email:</strong> <a href="mailto:deepmon82500@gmail.com">deepmon82500@gmail.com</a></p>
-                    <p><strong>Phone:</strong> <a href="tel:+91 8250050806">+91 8250050806</a></p>
-                </div>
+            <div class="details">
+                <h3>Kamal Krishna Mondal</h3>
+                <p><strong>Role:</strong> Chief Executive Officer</p>
+                <p><strong>Email:</strong> <a href="mailto:kkmexe1@gmail.com">kkmexe1@gmail.com</a></p>
+                <p><strong>Education:</strong> Bachelor of Arts </p>
+                <p><strong>WhatsApp:</strong> <a href="https://wa.me/919851754966" target="_blank" class="contact-link">+91 9851754966</a></p>
             </div>
-
-            <!-- Add more contacts here if needed -->
         </div>
-    </main>
-    <footer>
-        <p>© 2024 ADYASAKTI - Human Welfare and Research Development Trust. All rights reserved.</p>
-    </footer>
+        <!-- CFO -->
+        <!-- <div class="team-member">
+            <div class="profile-pic">
+                <img src="../images/cfo.jpg" alt="CFO">
+            </div>
+            <div class="details">
+                <h3>CFO Name</h3>
+                <p><strong>Role:</strong> Chief Financial Officer</p>
+                <p><strong>Email:</strong> <a href="mailto:cfo@example.com">cfo@example.com</a></p>
+                <p><strong>Education:</strong> Bachelor Of Science </p>
+                <p><strong>WhatsApp:</strong> <a href="https://wa.me/918200000000" target="_blank"
+                        class="contact-link">+91 82000 00000</a></p>
+            </div>
+        </div> -->
+        <!-- Development & Fundraising Manager -->
+        <div class="team-member">
+            <div class="profile-pic">
+                <img src="../images/Rajendro.jpeg" alt="Development Manager">
+            </div>
+            <div class="details">
+                <h3>Rajendro Sau</h3>
+                <p><strong>Role:</strong> Development & Fundraising Manager</p>
+                <p><strong>Email:</strong> <a href="mailto:rajandroprosad@gmail.com">rajandroprosad@gmail.com</a></p>
+                <p><strong>Education:</strong> Bachelor of Technology</p>
+                <p><strong>WhatsApp:</strong> <a href="https://wa.me/918250771252" target="_blank" class="contact-link">+91 8250771252</a></p>
+            </div>
+        </div>
+        <div class="team-member">
+            <div class="profile-pic">
+                <img src="../images/Deep-removebg-preview.png" alt="Development Manager">
+            </div>
+            <div class="details">
+                <h3>Deep Mondal</h3>
+                <p><strong>Role:</strong> IT and Technical Support</p>
+                <p><strong>Email:</strong> <a href="mailto:deepmon82500@gmail.com">deepmon82500@gmail.com</a></p>
+                <p><strong>Education:</strong> Bachelor of Computer Application</p>
+                <p><strong>WhatsApp:</strong> <a href="https://wa.me/918250050806" target="_blank" class="contact-link">+91 8250050806</a></p>
+            </div>
+        </div>
+    </div>
 
-    <script>
-        function goBack() {
-            window.history.back();
-        }
-    </script>
+    <footer>
+        <p>© 2024 ADYASAKTI - All rights reserved.</p>
+    </footer>
 </body>
 
 </html>
