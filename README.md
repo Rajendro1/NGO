@@ -3,518 +3,161 @@ package fileprocessorfactory
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"reflect"
-	"testing"
+	"fmt"
+	"strconv"
 
+	"gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/constants"
 	"gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/models"
-	"github.com/petergtz/pegomock/v4"
+	"gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/utils"
 )
 
-func TestCarrItemRestrictProcessor_Process(t *testing.T) {
-	pegomock.RegisterMockTestingT(t)
-	mockRepo := NewMockCarrItemRestrictRepository()
-	mockFileUtil := NewMockFileUtilMethods()
-
-	type args struct {
-		fileMetadata *models.FileMetadata
-	}
-
-	ctx := context.Background()
-
-	type mockOutputs struct {
-		fileData [][]string
-	}
-
-	resetMocks := func() {
-		mockRepo = NewMockCarrItemRestrictRepository()
-		mockFileUtil = NewMockFileUtilMethods()
-	}
-
-	tests := []struct {
-		name                      string
-		args                      args
-		carrItemRestrictProcessor func(args *models.FileMetadata) *CarrItemRestrictProcessor
-		mockOutputs               mockOutputs
-		prepareMocks              func(mockOutputs)
-		verifyMocks               func()
-		want                      bool
-		wantErr                   bool
-	}{
-		{
-			name: "Should return true",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(nil)
-				pegomock.When(mockRepo.GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())).ThenReturn(nil)
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "Should return false and error when reading unl file fails",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(nil, errors.New("reading unl file failed"))
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "Should return false and error when in valid data is passed",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"A", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "Should return false and error when get item restrict count fails",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(0, errors.New("get iitem restrict count failed"))
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "Should return false and error when delete carrier item restrict fails",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(errors.New("deletion failed"))
-				pegomock.When(mockRepo.GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())).ThenReturn(nil)
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "Should not delete carr item restrict and continue when item restrict count is 0",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(0, nil)
-				pegomock.When(mockRepo.GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())).ThenReturn(nil)
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "Should not get and delete carr item restrict and continue when same record comes twice",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}, {"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(nil)
-				pegomock.When(mockRepo.GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())).ThenReturn(nil)
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Twice()).GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Twice()).GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Twice()).InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "Should return false and error when get plan count fails",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(nil)
-				pegomock.When(mockRepo.GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(0, errors.New("get plan count failed"))
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "Should continue when plan count is 0 ",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(nil)
-				pegomock.When(mockRepo.GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(0, nil)
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "Should return false and error when get item count fails",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(nil)
-				pegomock.When(mockRepo.GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())).ThenReturn(0, errors.New("get item count failed"))
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "Should continue when item count is 0",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(nil)
-				pegomock.When(mockRepo.GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())).ThenReturn(0, nil)
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "Should skip insertion when subject area isSubjectAreaItemTpRmpkg(2020) ",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 2020)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(nil)
-				pegomock.When(mockRepo.GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())).ThenReturn(1, nil)
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalled(pegomock.Never()).InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "Should return error when insert carr item restrict fails",
-			args: args{
-				fileMetadata: &models.FileMetadata{
-					FileId: 1,
-				},
-			},
-			carrItemRestrictProcessor: func(args *models.FileMetadata) *CarrItemRestrictProcessor {
-				return NewCarrItemRestrictProcessor(testLogger{}, mockFileUtil, args, mockRepo, ctx, &sql.Tx{}, 1)
-			},
-			mockOutputs: mockOutputs{
-				fileData: [][]string{{"1", "1", "1", "1", "1", "1"}},
-			},
-			prepareMocks: func(outputs mockOutputs) {
-				pegomock.When(mockFileUtil.ReadUnlFiledata("/hidp_pkg_1_carr_item_restrict.unl")).ThenReturn(outputs.fileData, nil)
-				pegomock.When(mockRepo.GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(nil)
-				pegomock.When(mockRepo.GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())).ThenReturn(1, nil)
-				pegomock.When(mockRepo.InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())).ThenReturn(errors.New("insertion failed"))
-			},
-			verifyMocks: func() {
-				mockFileUtil.VerifyWasCalledOnce().ReadUnlFiledata(pegomock.Any[string]())
-				mockRepo.VerifyWasCalledOnce().GetItemRestrictCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().DeleteCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetPlanCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().GetItemCount(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[int]())
-				mockRepo.VerifyWasCalledOnce().InsertCarrItemRestrict(pegomock.Any[context.Context](), pegomock.Any[*sql.Tx](), pegomock.Any[models.CarrItemRestrict]())
-			},
-			want:    false,
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.prepareMocks(tt.mockOutputs)
-			got, err := tt.carrItemRestrictProcessor(tt.args.fileMetadata).Process("")
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CarrItemRestrictProcessor.Process() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CarrItemRestrictProcessor.Process() = %v, want %v", got, tt.want)
-			}
-			tt.verifyMocks()
-			resetMocks()
-		})
-	}
+type CarrItemRestrictProcessor struct {
+	logger       Logger
+	fileUtils    utils.FileUtilMethods
+	fileMetadata *models.FileMetadata
+	repository   CarrItemRestrictRepository
+	ctx          context.Context
+	tx           *sql.Tx
+	subjectArea  int
 }
 
-func TestCarrItemRestrictProcessor_NewCarrItemRestrict(t *testing.T) {
-
-	type args struct {
-		input []string
-	}
-
-	tests := []struct {
-		name    string
-		args    args
-		want    models.CarrItemRestrict
-		wantErr bool
-	}{
-		{
-			name: "Should return valid carr item restrict object",
-			args: args{
-				input: []string{"1", "1", "1", "1", "1", "1"},
-			},
-			want: models.CarrItemRestrict{
-				CarrierCoId:      1,
-				InsCarrPlanId:    1,
-				CoverageOptionId: 1,
-				ItemMdsFamId:     1,
-				RestrictTypeCode: 1,
-				Restrictionvalue: "1",
-			},
-			wantErr: false,
-		},
-		{
-			name: "Should return error when invalid data CarrierCoId and InsCarrPlanId is present",
-			args: args{
-				input: []string{"A", "A", "1", "1", "1", "1"},
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewCarrItemRestrict(tt.args.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCarrItemRestrict error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewCarrItemRestrict = %v, want %v", got, tt.want)
-			}
-		})
-	}
+type CarrItemRestrictRepository interface {
+	GetItemRestrictCount(ctx context.Context, tx *sql.Tx, carrierCoId int, insCarrierPlanId int, coverageOptionId int, itemMdsFamId int) (int, error)
+	DeleteCarrItemRestrict(ctx context.Context, tx *sql.Tx, carrierCoId int, insCarrierPlanId int, coverageOptionId int, itemMdsFamId int) error
+	GetPlanCount(ctx context.Context, tx *sql.Tx, carrierCoId int, insCarrierPlanId int) (int, error)
+	GetItemCount(ctx context.Context, tx *sql.Tx, itemMdsFamId int) (int, error)
+	InsertCarrItemRestrict(ctx context.Context, tx *sql.Tx, carrItemRestrict models.CarrItemRestrict) error
 }
 
-// Empty Loggers to avoid having to write log file stuff during test.
-type testLogger struct{}
-
-func (tl testLogger) Info(string, ...any) {
-	return
+func NewCarrItemRestrictProcessor(logger Logger, fileUtils utils.FileUtilMethods, fileMetadata *models.FileMetadata, repository CarrItemRestrictRepository, ctx context.Context, tx *sql.Tx, subjectArea int) *CarrItemRestrictProcessor {
+	return &CarrItemRestrictProcessor{logger: logger, fileUtils: fileUtils, fileMetadata: fileMetadata, repository: repository, ctx: ctx, tx: tx, subjectArea: subjectArea}
 }
 
-func (tl testLogger) Warn(string, ...any) {
-	return
+func (cir *CarrItemRestrictProcessor) Process(packageDir string) (bool, error) {
+	unlFile := fmt.Sprintf(constants.UnlFileCarrierItemRestrict, packageDir, cir.fileMetadata.FileId)
+	cir.logger.Info("Loading unl file", constants.LoggingKeyUnlFileName, unlFile, constants.LoggingKeyFileId, cir.fileMetadata.FileId)
+
+	fileData, err := cir.fileUtils.ReadUnlFiledata(unlFile)
+	if err != nil {
+		cir.logger.Error("Error loading the unl file", constants.LoggingKeyUnlFileName, unlFile)
+		return false, err
+	}
+
+	for _, row := range fileData {
+		if success, err := cir.processFileData(row); !success {
+			return false, err // Logs are handled in processFileData
+		}
+	}
+	return true, nil
 }
 
-func (tl testLogger) Error(string, ...any) {
-	return
+func (cir *CarrItemRestrictProcessor) processFileData(row []string) (bool, error) {
+	carrItemRestrict, err := NewCarrItemRestrict(row)
+	if err != nil {
+		cir.logger.Error("Error creating carr item restrict object", constants.LoggingKeyCarrierCoId, carrItemRestrict.CarrierCoId, constants.LoggingKeyInsCarrPlanId, carrItemRestrict.InsCarrPlanId)
+		return false, err
+	}
+	// var (
+	// 	previousCarrierCoId      int
+	// 	previousInsCarrPlanId    int
+	// 	previousCoverageOptionId int
+	// 	previousItemMdsFamId     int
+	// 	err                      error
+	// )
+	// if carrItemRestrict.CarrierCoId != previousCarrierCoId || carrItemRestrict.InsCarrPlanId != previousInsCarrPlanId || carrItemRestrict.CoverageOptionId != previousCoverageOptionId || carrItemRestrict.ItemMdsFamId != previousItemMdsFamId {
+	// 	previousCarrierCoId = carrItemRestrict.CarrierCoId
+	// 	previousInsCarrPlanId = carrItemRestrict.InsCarrPlanId
+	// 	previousCoverageOptionId = carrItemRestrict.CoverageOptionId
+	// 	previousItemMdsFamId = carrItemRestrict.ItemMdsFamId
+	var previousCarrItemRestrict *models.PreviousCarrItemRestrict
+	if carrItemRestrict.CarrierCoId != previousCarrItemRestrict.PreviousCarrierCoId || carrItemRestrict.InsCarrPlanId != previousCarrItemRestrict.PreviousInsCarrPlanId || carrItemRestrict.CoverageOptionId != previousCarrItemRestrict.PreviousCoverageOptionId || carrItemRestrict.ItemMdsFamId != previousCarrItemRestrict.PreviousItemMdsFamId {
+		previousCarrItemRestrict.PreviousCarrierCoId = carrItemRestrict.CarrierCoId
+		previousCarrItemRestrict.PreviousInsCarrPlanId = carrItemRestrict.InsCarrPlanId
+		previousCarrItemRestrict.PreviousCoverageOptionId = carrItemRestrict.CoverageOptionId
+		previousCarrItemRestrict.PreviousItemMdsFamId = carrItemRestrict.ItemMdsFamId
+
+		if err := cir.handleItemRestriction(carrItemRestrict); err != nil {
+			return false, err
+		}
+	}
+
+	return true, nil
+}
+
+func (cir *CarrItemRestrictProcessor) handleItemRestriction(carrItemRestrict models.CarrItemRestrict) error {
+	if err := cir.validateAndDeleteExistingRestrictions(carrItemRestrict); err != nil {
+		return err
+	}
+	return cir.insertOrGetItemRestriction(carrItemRestrict)
+}
+
+func (cir *CarrItemRestrictProcessor) validateAndDeleteExistingRestrictions(carrItemRestrict models.CarrItemRestrict) error {
+	count, err := cir.repository.GetItemRestrictCount(cir.ctx, cir.tx, carrItemRestrict.CarrierCoId, carrItemRestrict.InsCarrPlanId, carrItemRestrict.CoverageOptionId, carrItemRestrict.ItemMdsFamId)
+	if err != nil {
+		cir.logger.Error("Error getting item restrict count", constants.LoggingKeyCarrierCoId, carrItemRestrict.CarrierCoId, constants.LoggingKeyInsCarrPlanId, carrItemRestrict.InsCarrPlanId, constants.LoggingKeyCoverageOptionId, carrItemRestrict.CoverageOptionId, constants.LoggingKeyItemMdsFamId, carrItemRestrict.ItemMdsFamId)
+		return err
+	}
+
+	if count > 0 {
+		if err = cir.repository.DeleteCarrItemRestrict(cir.ctx, cir.tx, carrItemRestrict.CarrierCoId, carrItemRestrict.InsCarrPlanId, carrItemRestrict.CoverageOptionId, carrItemRestrict.ItemMdsFamId); err != nil {
+			cir.logger.Error("Error deleting carr item restrict", constants.LoggingKeyCarrierCoId, carrItemRestrict.CarrierCoId, constants.LoggingKeyInsCarrPlanId, carrItemRestrict.InsCarrPlanId, constants.LoggingKeyCoverageOptionId, carrItemRestrict.CoverageOptionId, constants.LoggingKeyItemMdsFamId, carrItemRestrict.ItemMdsFamId)
+			return err
+		}
+	}
+	return nil
+}
+
+func (cir *CarrItemRestrictProcessor) insertOrGetItemRestriction(carrItemRestrict models.CarrItemRestrict) error {
+	planCount, err := cir.repository.GetPlanCount(cir.ctx, cir.tx, carrItemRestrict.CarrierCoId, carrItemRestrict.InsCarrPlanId)
+	if err != nil {
+		cir.logger.Error("Error getting plan count", constants.LoggingKeyCarrierCoId, carrItemRestrict.CarrierCoId, constants.LoggingKeyInsCarrPlanId, carrItemRestrict.InsCarrPlanId)
+		return err
+	}
+	if planCount <= 0 {
+		cir.logger.Warn("Plan does not exist, hence skipping the insert/update for this item restrict", constants.LoggingKeyCarrierCoId, carrItemRestrict.CarrierCoId, constants.LoggingKeyInsCarrPlanId, carrItemRestrict.InsCarrPlanId)
+		return nil
+	}
+
+	itemCount, err := cir.repository.GetItemCount(cir.ctx, cir.tx, carrItemRestrict.ItemMdsFamId)
+	if err != nil {
+		cir.logger.Error("Error getting item count", constants.LoggingKeyItemMdsFamId, carrItemRestrict.ItemMdsFamId)
+		return err
+	}
+	if itemCount <= 0 {
+		cir.logger.Warn("Item does not exist, hence skipping the insert/update for this item restrict", constants.LoggingKeyItemMdsFamId, carrItemRestrict.ItemMdsFamId)
+		return nil
+	}
+
+	if cir.subjectArea != constants.SubjectAreaItemTpRmpkg {
+		if err := cir.repository.InsertCarrItemRestrict(cir.ctx, cir.tx, carrItemRestrict); err != nil {
+			cir.logger.Error("Error inserting carr item restrict", constants.LoggingKeyCarrierCoId, carrItemRestrict.CarrierCoId, constants.LoggingKeyInsCarrPlanId, carrItemRestrict.InsCarrPlanId)
+			return err
+		}
+	}
+	return nil
+}
+
+func NewCarrItemRestrict(row []string) (models.CarrItemRestrict, error) {
+	var carrItemRestrict models.CarrItemRestrict
+	var err error
+	for index, value := range row {
+		switch index {
+		case 0:
+			carrItemRestrict.CarrierCoId, err = utils.StringToInt(value, "carrPlanParm.CarrierCoId", err)
+		case 1:
+			carrItemRestrict.InsCarrPlanId, err = utils.StringToInt(value, "carrPlanParm.InsCarrPlanId", err)
+		case 2:
+			carrItemRestrict.CoverageOptionId, err = utils.StringToInt(value, "carrPlanParm.CoverageOptionId", err)
+		case 3:
+			carrItemRestrict.ItemMdsFamId, err = utils.StringToInt(value, "carrPlanParm.MdsFamId", err)
+		case 4:
+			carrItemRestrict.RestrictTypeCode, err = strconv.Atoi(value)
+		case 5:
+			carrItemRestrict.Restrictionvalue = value
+		}
+		if err != nil {
+			return carrItemRestrict, fmt.Errorf("error converting string to int for index %d: %v", index, err)
+		}
+	}
+	return carrItemRestrict, nil
 }
