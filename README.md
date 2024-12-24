@@ -39,10 +39,8 @@ func NewCarrItemRestrictProcessor(logger Logger, fileUtils utils.FileUtilMethods
 }
 
 func (cir *CarrItemRestrictProcessor) Process(packageDir string) (bool, error) {
-	unlFile, err := cir.loadFile(packageDir)
-	if err != nil {
-		return false, err
-	}
+	unlFile := fmt.Sprintf(constants.UnlFileCarrierItemRestrict, packageDir, cir.fileMetadata.FileId)
+	cir.logger.Info("Loading unl file", constants.LoggingKeyUnlFileName, unlFile, constants.LoggingKeyFileId, cir.fileMetadata.FileId)
 
 	fileData, err := cir.fileUtils.ReadUnlFiledata(unlFile)
 	if err != nil {
@@ -50,58 +48,84 @@ func (cir *CarrItemRestrictProcessor) Process(packageDir string) (bool, error) {
 		return false, err
 	}
 
-	if err := cir.processFileData(fileData); err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
-func (cir *CarrItemRestrictProcessor) loadFile(packageDir string) (string, error) {
-	unlFile := fmt.Sprintf(constants.UnlFileCarrierItemRestrict, packageDir, cir.fileMetadata.FileId)
-	cir.logger.Info("Loading unl file", constants.LoggingKeyUnlFileName, unlFile, constants.LoggingKeyFileId, cir.fileMetadata.FileId)
-	return unlFile, nil
-}
-
-func (cir *CarrItemRestrictProcessor) processFileData(fileData [][]string) error {
 	var previousCarrItemRestrict models.CarrItemRestrict
 
 	for _, row := range fileData {
-		carrItemRestrict, err := NewCarrItemRestrict(row)
-		if err != nil {
+		if carrItemRestrict, err := NewCarrItemRestrict(row); err != nil {
 			return cir.handleError(constants.LoggingKeyCarrierCoId, carrItemRestrict, err)
 		}
 
 		if cir.isNewRestrict(previousCarrItemRestrict, carrItemRestrict) {
 			previousCarrItemRestrict = carrItemRestrict
 			if err := cir.handleNewRestrict(carrItemRestrict); err != nil {
-				return err
+				return false, err
 			}
 		}
 
-		if err := cir.handlePlanAndItemCount(carrItemRestrict); err != nil {
-			return err
+		if err := cir.handlePlanCount(carrItemRestrict); err != nil {
+			if errors.Is(err, conutErr) {
+				continue
+			}
+			return false, err
+		}
+
+		if err := cir.handleItemCount(carrItemRestrict); err != nil {
+			if errors.Is(err, conutErr) {
+				continue
+			}
+			return false, err
+		}
+
+		if cir.subjectArea != constants.SubjectAreaItemTpRmpkg {
+			if err := cir.repository.InsertCarrItemRestrict(cir.ctx, cir.tx, carrItemRestrict); err != nil {
+				return cir.handleError(constants.LoggingKeyInsCarrPlanId, carrItemRestrict, err)
+			}
 		}
 	}
+	return true, nil
+}
 
+func (cir *CarrItemRestrictProcessor) isNewRestrict(previous, current models.CarrItemRestrict) bool {
+	return current.CarrierCoId != previous.CarrierCoId || current.InsCarrPlanId != previous.InsCarrPlanId || current.CoverageOptionId != previous.CoverageOptionId || current.ItemMdsFamId != previous.ItemMdsFamId
+}
+
+func (cir *CarrItemRestrictProcessor) handleError(key string, carrItemRestrict models.CarrItemRestrict, err error) (bool, error) {
+	cir.logger.Error("Error", key, carrItemRestrict.CarrierCoId, constants.LoggingKeyInsCarrPlanId, carrItemRestrict.InsCarrPlanId)
+	return false, err
+}
+
+func (cir *CarrItemRestrictProcessor) handleNewRestrict(carrItemRestrict models.CarrItemRestrict) error {
+	count, err := cir.repository.GetItemRestrictCount(cir.ctx, cir.tx, carrItemRestrict.CarrierCoId, carrItemRestrict.InsCarrPlanId, carrItemRestrict.CoverageOptionId, carrItemRestrict.ItemMdsFamId)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return cir.repository.DeleteCarrItemRestrict(cir.ctx, cir.tx, carrItemRestrict.CarrierCoId, carrItemRestrict.InsCarrPlanId, carrItemRestrict.CoverageOptionId, carrItemRestrict.ItemMdsFamId)
+	}
 	return nil
 }
 
-func (cir *CarrItemRestrictProcessor) handlePlanAndItemCount(carrItemRestrict models.CarrItemRestrict) error {
-	if err := cir.handlePlanCount(carrItemRestrict); err != nil && !errors.Is(err, conutErr) {
+func (cir *CarrItemRestrictProcessor) handlePlanCount(carrItemRestrict models.CarrItemRestrict) error {
+	planCount, err := cir.repository.GetPlanCount(cir.ctx, cir.tx, carrItemRestrict.CarrierCoId, carrItemRestrict.InsCarrPlanId)
+	if err != nil {
 		return err
 	}
+	if planCount <= 0 {
+		cir.logger.Warn("Plan does not exist, hence continuing with next item restrict", constants.LoggingKeyCarrierCoId, carrItemRestrict.CarrierCoId, constants.LoggingKeyInsCarrPlanId, carrItemRestrict.InsCarrPlanId)
+		return conutErr
+	}
+	return nil
+}
 
-	if err := cir.handleItemCount(carrItemRestrict); err != nil && !errors.Is(err, conutErr) {
+func (cir *CarrItemRestrictProcessor) handleItemCount(carrItemRestrict models.CarrItemRestrict) error {
+	itemCount, err := cir.repository.GetItemCount(cir.ctx, cir.tx, carrItemRestrict.ItemMdsFamId)
+	if err != nil {
 		return err
 	}
-
-	if cir.subjectArea != constants.SubjectAreaItemTpRmpkg {
-		if err := cir.repository.InsertCarrItemRestrict(cir.ctx, cir.tx, carrItemRestrict); err != nil {
-			return cir.handleError(constants.LoggingKeyInsCarrPlanId, carrItemRestrict, err)
-		}
+	if itemCount <= 0 {
+		cir.logger.Warn("Item does not exist, hence continuing with next item restrict", constants.LoggingKeyItemMdsFamId, carrItemRestrict.ItemMdsFamId)
+		return conutErr
 	}
-
 	return nil
 }
 func NewCarrItemRestrict(row []string) (models.CarrItemRestrict, error) {
