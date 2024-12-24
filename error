@@ -1,0 +1,14 @@
+?       gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/cmd/insurancePlanApply  [no test files]
+?       gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/constants      [no test files]
+?       gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/flags  [no test files]
+?       gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/models [no test files]
+?       gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/prettyprinter  [no test files]
+--- FAIL: TestPlanSubmnRqmtProcessor_Process (0.00s)
+    --- FAIL: TestPlanSubmnRqmtProcessor_Process/Should_return_true_and_error_when_get_plan_count_returns_0 (0.00s)
+        planSubmnRqmtProcessor_test.go:559: PlanSubmnRqmtProcessor.Process() = false, want true
+FAIL
+FAIL    gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/fileprocessorfactory   1.852s
+ok      gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/insuranceplanapply     1.823s
+ok      gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/repository     (cached)
+ok      gecgithub01.walmart.com/CustomerTechnologies/insurancePlanApply/internal/utils  (cached)
+FAIL
