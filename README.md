@@ -22,18 +22,20 @@ type CarrItemRestrictProcessor struct {
 	subjectArea  int
 }
 
-var conutErr = errors.New("invalid count error")
+var (
+	conutErr = errors.New("invalid count error")
+)
 
 type CarrItemRestrictRepository interface {
-	GetItemRestrictCount(ctx context.Context, tx *sql.Tx, carrierCoId, insCarrierPlanId, coverageOptionId, itemMdsFamId int) (int, error)
-	DeleteCarrItemRestrict(ctx context.Context, tx *sql.Tx, carrierCoId, insCarrierPlanId, coverageOptionId, itemMdsFamId int) error
-	GetPlanCount(ctx context.Context, tx *sql.Tx, carrierCoId, insCarrierPlanId int) (int, error)
+	GetItemRestrictCount(ctx context.Context, tx *sql.Tx, carrierCoId int, insCarrierPlanId int, coverageOptionId int, itemMdsFamId int) (int, error)
+	DeleteCarrItemRestrict(ctx context.Context, tx *sql.Tx, carrierCoId int, insCarrierPlanId int, coverageOptionId int, itemMdsFamId int) error
+	GetPlanCount(ctx context.Context, tx *sql.Tx, carrierCoId int, insCarrierPlanId int) (int, error)
 	GetItemCount(ctx context.Context, tx *sql.Tx, itemMdsFamId int) (int, error)
 	InsertCarrItemRestrict(ctx context.Context, tx *sql.Tx, carrItemRestrict models.CarrItemRestrict) error
 }
 
 func NewCarrItemRestrictProcessor(logger Logger, fileUtils utils.FileUtilMethods, fileMetadata *models.FileMetadata, repository CarrItemRestrictRepository, ctx context.Context, tx *sql.Tx, subjectArea int) *CarrItemRestrictProcessor {
-	return &CarrItemRestrictProcessor{logger, fileUtils, fileMetadata, repository, ctx, tx, subjectArea}
+	return &CarrItemRestrictProcessor{logger: logger, fileUtils: fileUtils, fileMetadata: fileMetadata, repository: repository, ctx: ctx, tx: tx, subjectArea: subjectArea}
 }
 
 func (cir *CarrItemRestrictProcessor) Process(packageDir string) (bool, error) {
@@ -46,39 +48,42 @@ func (cir *CarrItemRestrictProcessor) Process(packageDir string) (bool, error) {
 		return false, err
 	}
 
-	return cir.processFileData(fileData)
-}
-
-func (cir *CarrItemRestrictProcessor) processFileData(fileData [][]string) (bool, error) {
 	var previousCarrItemRestrict models.CarrItemRestrict
 
 	for _, row := range fileData {
 		carrItemRestrict, err := NewCarrItemRestrict(row)
 		if err != nil {
-			return false, cir.handleError(constants.LoggingKeyCarrierCoId, carrItemRestrict, err)
+			return cir.handleError(constants.LoggingKeyCarrierCoId, carrItemRestrict, err)
 		}
 
-		if err := cir.processRestrict(carrItemRestrict, &previousCarrItemRestrict); err != nil {
+		if cir.isNewRestrict(previousCarrItemRestrict, carrItemRestrict) {
+			previousCarrItemRestrict = carrItemRestrict
+			if err := cir.handleNewRestrict(carrItemRestrict); err != nil {
+				return false, err
+			}
+		}
+
+		if err := cir.handlePlanCount(carrItemRestrict); err != nil {
+			if errors.Is(err, conutErr) {
+				continue
+			}
 			return false, err
 		}
-	}
 
-	return true, nil
-}
+		if err := cir.handleItemCount(carrItemRestrict); err != nil {
+			if errors.Is(err, conutErr) {
+				continue
+			}
+			return false, err
+		}
 
-func (cir *CarrItemRestrictProcessor) processRestrict(carrItemRestrict models.CarrItemRestrict, previous *models.CarrItemRestrict) error {
-	if cir.isNewRestrict(*previous, carrItemRestrict) {
-		*previous = carrItemRestrict
-		if err := cir.handleNewRestrict(carrItemRestrict); err != nil {
-			return err
+		if cir.subjectArea != constants.SubjectAreaItemTpRmpkg {
+			if err := cir.repository.InsertCarrItemRestrict(cir.ctx, cir.tx, carrItemRestrict); err != nil {
+				return cir.handleError(constants.LoggingKeyInsCarrPlanId, carrItemRestrict, err)
+			}
 		}
 	}
-
-	if err := cir.handlePlanAndItemCount(carrItemRestrict); err != nil {
-		return err
-	}
-
-	return nil
+	return true, nil
 }
 
 func (cir *CarrItemRestrictProcessor) isNewRestrict(previous, current models.CarrItemRestrict) bool {
@@ -125,24 +130,28 @@ func (cir *CarrItemRestrictProcessor) handleItemCount(carrItemRestrict models.Ca
 	return nil
 }
 func NewCarrItemRestrict(row []string) (models.CarrItemRestrict, error) {
-	carrItemRestrict := models.CarrItemRestrict{}
-	var err error
-
-	fields := []func(string) error{
-		func(v string) error { return utils.StringToInt(v, "CarrierCoId", &carrItemRestrict.CarrierCoId) },
-		func(v string) error { return utils.StringToInt(v, "InsCarrPlanId", &carrItemRestrict.InsCarrPlanId) },
-		func(v string) error {
-			return utils.StringToInt(v, "CoverageOptionId", &carrItemRestrict.CoverageOptionId)
-		},
-		func(v string) error { return utils.StringToInt(v, "ItemMdsFamId", &carrItemRestrict.ItemMdsFamId) },
-		func(v string) error { carrItemRestrict.RestrictTypeCode, err = strconv.Atoi(v); return err },
-		func(v string) error { carrItemRestrict.Restrictionvalue = v; return nil },
-	}
-
-	for i, value := range row {
-		if err := fields[i](value); err != nil {
-			return carrItemRestrict, fmt.Errorf("error processing field %d: %v", i, err)
+	var (
+		carrItemRestrict models.CarrItemRestrict
+		err              error
+	)
+	for index, value := range row {
+		switch index {
+		case 0:
+			carrItemRestrict.CarrierCoId, err = utils.StringToInt(value, "carrPlanParm.CarrierCoId", err)
+		case 1:
+			carrItemRestrict.InsCarrPlanId, err = utils.StringToInt(value, "carrPlanParm.InsCarrPlanId", err)
+		case 2:
+			carrItemRestrict.CoverageOptionId, err = utils.StringToInt(value, "carrPlanParm.CoverageOptionId", err)
+		case 3:
+			carrItemRestrict.ItemMdsFamId, err = utils.StringToInt(value, "carrPlanParm.MdsFamId", err)
+		case 4:
+			carrItemRestrict.RestrictTypeCode, _ = strconv.Atoi(value)
+		case 5:
+			carrItemRestrict.Restrictionvalue = value
 		}
+	}
+	if err != nil {
+		return carrItemRestrict, err
 	}
 	return carrItemRestrict, nil
 }
