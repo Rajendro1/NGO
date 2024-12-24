@@ -1,123 +1,85 @@
-func (icp *InsCarrierPlanProcessor) Process(packageDir string) (bool, error) {
-	var carrExpirationDate string
-
-	// Load primary unl file
-	fileData, err := icp.loadFileData(constants.UnlFileInsCarrierPlan, packageDir, icp.fileMetadata.FileId)
-	if err != nil {
+func (psr *PlanSubmnRqmtProcessor) Process(packageDir string) (bool, error) {
+	if err := psr.repository.CreateTempTableClaimParms(psr.ctx, psr.tx); err != nil {
 		return false, err
 	}
 
-	// Load expiration data if applicable
-	if icp.groupPlanOperation == 1 {
-		carrExpirationDate, err = icp.getExpirationDate(packageDir)
-		if err != nil {
-			icp.logger.Warn("Error fetching expiration date", constants.LoggingKeyFileId, icp.fileMetadata.FileId)
+	if err := psr.repository.DeleteTempTableClaimParms(psr.ctx, psr.tx); err != nil {
+		return false, err
+	}
+
+	unlFile := fmt.Sprintf(constants.UnlFileClaimParms, psr.basePath)
+	psr.logger.Info("Loading unl file", constants.LoggingKeyUnlFileName, unlFile, constants.LoggingKeyFileId, psr.fileMetadata.FileId)
+	fileData, err := psr.fileUtils.ReadUnlFiledata(unlFile)
+	if err != nil {
+		psr.logger.Error("Error loading the unl file", constants.LoggingKeyUnlFileName, unlFile)
+		return false, err
+	}
+
+	for _, row := range fileData {
+		for index, value := range row {
+			if index == 0 {
+				claimParmNbr, _ := strconv.Atoi(value)
+				if err = psr.repository.InsertClaimParm(psr.ctx, psr.tx, claimParmNbr); err != nil {
+					psr.logger.Error("Error inserting claim parm", "claimParmNbr", claimParmNbr)
+					return false, err
+				}
+			}
 		}
 	}
 
-	// Process each row in the file
+	isFirstTime := true
+
+	unlFile = fmt.Sprintf(constants.UnlFilePlanSubmnRqmt, packageDir, psr.fileMetadata.FileId)
+
+	psr.logger.Info("Loading unl file", constants.LoggingKeyUnlFileName, unlFile, constants.LoggingKeyFileId, psr.fileMetadata.FileId)
+	fileData, err = psr.fileUtils.ReadUnlFiledata(unlFile)
+	if err != nil {
+		psr.logger.Error("Error loading the unl file", constants.LoggingKeyUnlFileName, unlFile)
+		return false, err
+	}
+
 	for _, row := range fileData {
-		if err := icp.processRow(row, carrExpirationDate); err != nil {
+		planSubmnRqmt, err := NewPlanSubmnRqmt(row)
+		if err != nil {
+			psr.logger.Error("Error creating plan submn rqmt", constants.LoggingKeyCarrierCoId, planSubmnRqmt.CarrierCoId, constants.LoggingKeyInsCarrPlanId, planSubmnRqmt.InsCarrPlanId)
 			return false, err
 		}
-	}
 
+		var count int
+		if count, err = psr.repository.GetPlanCount(psr.ctx, psr.tx, planSubmnRqmt.CarrierCoId, planSubmnRqmt.InsCarrPlanId); err != nil {
+			psr.logger.Error("Error getting plan count", constants.LoggingKeyCarrierCoId, planSubmnRqmt.CarrierCoId, constants.LoggingKeyInsCarrPlanId, planSubmnRqmt.InsCarrPlanId)
+			return false, err
+		}
+		if count <= 0 {
+			return true, fmt.Errorf("skipping planSubmnRqmt record processing as plan does not exist with CarrierCoId: %d and InsCarrPlan %d", planSubmnRqmt.CarrierCoId, planSubmnRqmt.InsCarrPlanId)
+		}
+		if isFirstTime {
+			if err := psr.repository.DeletePlanSubmn(psr.ctx, psr.tx, planSubmnRqmt.CarrierCoId, planSubmnRqmt.InsCarrPlanId); err != nil {
+				psr.logger.Error("Error deleting plan submn rqmt", constants.LoggingKeyCarrierCoId, planSubmnRqmt.CarrierCoId, constants.LoggingKeyInsCarrPlanId, planSubmnRqmt.InsCarrPlanId)
+				return false, err
+			}
+			if err := psr.repository.DeleteD0PlanSubmn(psr.ctx, psr.tx, planSubmnRqmt.CarrierCoId, planSubmnRqmt.InsCarrPlanId); err != nil {
+				psr.logger.Error("Error deleting D0 plan submn", constants.LoggingKeyCarrierCoId, planSubmnRqmt.CarrierCoId, constants.LoggingKeyInsCarrPlanId, planSubmnRqmt.InsCarrPlanId)
+				return false, err
+			}
+			isFirstTime = false
+		}
+		count, err = psr.repository.GetClaimParmCount(psr.ctx, psr.tx, planSubmnRqmt.ClaimParmNbr)
+		if err != nil {
+			psr.logger.Error("Error gettingclaim parm count", constants.LoggingKeyCarrierCoId, planSubmnRqmt.CarrierCoId, constants.LoggingKeyInsCarrPlanId, planSubmnRqmt.InsCarrPlanId)
+			return false, err
+		}
+		if count > 0 {
+			if err = psr.repository.InsertPlanSubmnRqmt(psr.ctx, psr.tx, planSubmnRqmt); err != nil {
+				psr.logger.Error("Error inserting plan submn rqmt", constants.LoggingKeyCarrierCoId, planSubmnRqmt.CarrierCoId, constants.LoggingKeyInsCarrPlanId, planSubmnRqmt.InsCarrPlanId)
+				return false, err
+			}
+		} else {
+			if err = psr.repository.InsertD0PlanSubmnRqmt(psr.ctx, psr.tx, planSubmnRqmt); err != nil {
+				psr.logger.Error("Error inserting D0 plan submn rqmt", constants.LoggingKeyCarrierCoId, planSubmnRqmt.CarrierCoId, constants.LoggingKeyInsCarrPlanId, planSubmnRqmt.InsCarrPlanId)
+				return false, err
+			}
+		}
+	}
 	return true, nil
-}
-
-// Helper function to load file data
-func (icp *InsCarrierPlanProcessor) loadFileData(fileConstant, packageDir, identifier string) ([][]string, error) {
-	unlFile := fmt.Sprintf(fileConstant, packageDir, identifier)
-	icp.logger.Info("Loading unl file", constants.LoggingKeyUnlFileName, unlFile, constants.LoggingKeyFileId, identifier)
-
-	fileData, err := icp.fileUtils.ReadUnlFiledata(unlFile)
-	if err != nil {
-		icp.logger.Error("Error loading the unl file", constants.LoggingKeyUnlFileName, unlFile)
-		return nil, err
-	}
-
-	return fileData, nil
-}
-
-// Helper function to fetch expiration date
-func (icp *InsCarrierPlanProcessor) getExpirationDate(packageDir string) (string, error) {
-	unlFile := fmt.Sprintf(constants.UnlFileStoreExpirationDate, packageDir, icp.fileMetadata.RequestId)
-	icp.logger.Info("Loading expiration file", constants.LoggingKeyUnlFileName, unlFile, constants.LoggingKeyFileId, icp.fileMetadata.FileId)
-
-	expirationFileData, err := icp.fileUtils.ReadUnlFiledata(unlFile)
-	if err != nil {
-		return "", err
-	}
-
-	for _, row := range expirationFileData {
-		if len(row) < 2 {
-			continue
-		}
-		storeNum, _ := strconv.Atoi(row[0])
-		if fmt.Sprint(storeNum) == icp.storeNum && storeNum > 0 {
-			return row[1], nil
-		}
-	}
-
-	return "", nil
-}
-
-// Helper function to process a single row
-func (icp *InsCarrierPlanProcessor) processRow(row []string, expirationDate string) error {
-	insCarrPlan, err := NewInsCarrPlan(row, expirationDate)
-	if err != nil {
-		icp.logger.Error("Error creating ins carr plan object", constants.LoggingKeyCarrierCoId, insCarrPlan.CarrierCoId, constants.LoggingKeyInsCarrPlanId, insCarrPlan.InsCarrPlanId)
-		return err
-	}
-
-	count, err := icp.repository.GetPlanCount(icp.ctx, icp.tx, insCarrPlan.CarrierCoId, insCarrPlan.InsCarrPlanId)
-	if err != nil {
-		icp.logger.Error("Error getting plan count", constants.LoggingKeyCarrierCoId, insCarrPlan.CarrierCoId, constants.LoggingKeyInsCarrPlanId, insCarrPlan.InsCarrPlanId)
-		return err
-	}
-
-	if err := icp.insertOrUpdatePlan(count, insCarrPlan); err != nil {
-		return err
-	}
-
-	return icp.cleanupRelatedData(insCarrPlan)
-}
-
-// Helper function to insert or update plan
-func (icp *InsCarrierPlanProcessor) insertOrUpdatePlan(count int, plan *InsCarrPlan) error {
-	if count == 0 {
-		if err := icp.repository.InsertInsCarrPlan(icp.ctx, icp.tx, plan); err != nil {
-			icp.logger.Error("Error inserting ins carr plan", constants.LoggingKeyCarrierCoId, plan.CarrierCoId, constants.LoggingKeyInsCarrPlanId, plan.InsCarrPlanId)
-			return err
-		}
-	} else {
-		if err := icp.repository.UpdateInsCarrPlan(icp.ctx, icp.tx, plan); err != nil {
-			icp.logger.Error("Error updating ins carr plan", constants.LoggingKeyCarrierCoId, plan.CarrierCoId, constants.LoggingKeyInsCarrPlanId, plan.InsCarrPlanId)
-			return err
-		}
-	}
-	return nil
-}
-
-// Helper function to clean up related data
-func (icp *InsCarrierPlanProcessor) cleanupRelatedData(plan *InsCarrPlan) error {
-	deleteFunctions := []func() error{
-		func() error { return icp.repository.DeleteCovgCopay(icp.ctx, icp.tx, plan.CarrierCoId, plan.InsCarrPlanId) },
-		func() error { return icp.repository.DeleteCovgOptRestrict(icp.ctx, icp.tx, plan.CarrierCoId, plan.InsCarrPlanId) },
-		func() error { return icp.repository.DeleteCarrPlanParm(icp.ctx, icp.tx, plan.CarrierCoId, plan.InsCarrPlanId) },
-		func() error { return icp.repository.DeleteCovgFee(icp.ctx, icp.tx, plan.CarrierCoId, plan.InsCarrPlanId) },
-		func() error { return icp.repository.DeleteCovgPrice(icp.ctx, icp.tx, plan.CarrierCoId, plan.InsCarrPlanId) },
-		func() error { return icp.repository.DeleteCovgOption(icp.ctx, icp.tx, plan.CarrierCoId, plan.InsCarrPlanId) },
-		func() error { return icp.repository.DeleteCarrGrp(icp.ctx, icp.tx, plan.CarrierCoId, plan.InsCarrPlanId) },
-		func() error { return icp.repository.DeleteParentCarrGrp(icp.ctx, icp.tx, plan.CarrierCoId, plan.InsCarrPlanId) },
-	}
-
-	for _, deleteFunc := range deleteFunctions {
-		if err := deleteFunc(); err != nil {
-			icp.logger.Error("Error during cleanup", constants.LoggingKeyCarrierCoId, plan.CarrierCoId, constants.LoggingKeyInsCarrPlanId, plan.InsCarrPlanId)
-			return err
-		}
-	}
-
-	return nil
 }
