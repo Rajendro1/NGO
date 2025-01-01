@@ -1,64 +1,231 @@
-func (pcp *PhmCarrProcessor) Process(packageDir string) (bool, error) {
-    unlFile := fmt.Sprintf(constants.UnlFilePhmCarrProcessor, packageDir, pcp.fileMetadata.FileId)
+int load_submn_rqst()
+{
+    FILE *unlFile;
+    int retcode = 0 ;
+    int linecnt = 0;
+    int DoNew = 0;
+    int DoOld = 0;
 
-    pcp.logger.Info("Loading unl file", constants.LoggingKeyUnlFileName, unlFile, constants.LoggingKeyFileId, pcp.fileMetadata.FileId)
-    fileData, err := pcp.fileUtils.ReadUnlFiledata(unlFile)
-    if err != nil {
-        pcp.logger.Error("Error loading the unl file", constants.LoggingKeyUnlFileName, unlFile)
-        return false, err
+    EXEC SQL BEGIN DECLARE SECTION;
+        char chknull[9];
+        int submn_rqmt_code;
+        int seq_nbr;
+        int claim_part_code;
+        int claim_segment_code;
+        int group_id;
+        int field_nbr;
+        char *field_id;
+        int max_length_qty;
+        char *field_default_txt;
+        int default_type_code;
+        int usage_code;
+        char *field_format_txt;
+        char *signature_req_ind;
+        int pre_sepr_char_nbr;
+        int post_sepr_char_nbr;
+        char *field_id_incl_ind;
+    EXEC SQL END DECLARE SECTION;
+
+    strcpy(cFuncName, "load_submn_rqst");
+    write_log("Function Started", LOG_TIMINGS, gPkgTrId, cFuncName);
+
+    if(strcmp(gcCFVersion, "51") == 0 || gSubjArea == SJ_NS_CLAIM_FORMAT) DoOld = 1;
+    if(strcmp(gcCFVersion, "D0") == 0 || gSubjArea == SJ_NS_CLAIM_FORMAT) DoNew = 1;
+
+    memset(cLogMsg, '\0', sizeof(cLogMsg));
+    sprintf(cLogMsg, "DoOld=[%i]", DoOld);
+    write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+
+    memset(cLogMsg, '\0', sizeof(cLogMsg));
+    sprintf(cLogMsg, "DoNew=[%i]", DoNew);
+    write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+
+    memset(cLogMsg, '\0', sizeof(cLogMsg));
+
+    unlFile = fopen(l_file[10].file_name, "r");
+    if (unlFile == NULL)
+    {
+        sprintf(cLogMsg, "ERROR* - Can't open Load file %s", l_file[10].file_name);
+        write_log(cLogMsg, LOG_ERROR, gPkgTrId, cFuncName);
+        retcode = -1;
     }
+    else
+    {
+        while( !feof(unlFile))
+        {
+            memset(linestr, '\0', sizeof(linestr));
+            getfline = fgets(linestr, sizeof(linestr), unlFile);
+            if (ferror(unlFile))
+            {
+                sprintf(cLogMsg, "ERROR* - Reading Load file %s", l_file[10].file_name);
+                write_log(cLogMsg, LOG_ERROR, gPkgTrId, cFuncName);
+                retcode = -1;
+                break;
+            }
+            if (getfline == NULL)
+                break;
 
-    for _, row := range fileData {
-        phmCarr, err := NewPhmCarr(row)
-        if err != nil {
-            pcp.logger.Error("Error creating phm carr object", constants.LoggingKeyCarrierCoId, phmCarr.CarrierCoId, constants.LoggingKeyInsCarrPlanId, phmCarr.InsCarrPlanId)
-            return false, err
-        }
+            linecnt++;
 
-        count, err := pcp.repository.GetPlanCount(pcp.ctx, pcp.tx, phmCarr.CarrierCoId, phmCarr.InsCarrPlanId)
-        if err != nil {
-            pcp.logger.Error("Error getting plan count", constants.LoggingKeyCarrierCoId, phmCarr.CarrierCoId, constants.LoggingKeyInsCarrPlanId, phmCarr.InsCarrPlanId)
-            return false, err
-        }
+            submn_rqmt_code       = atoi((char *)GetNextField(getfline));
+            seq_nbr               = atoi((char *)GetNextField(NULL));
+            claim_part_code       = atoi((char *)GetNextField(NULL));
+            claim_segment_code    = atoi((char *)GetNextField(NULL));
+            group_id              = atoi((char *)GetNextField(NULL));
+            field_nbr             = atoi((char *)GetNextField(NULL));
+            field_id              = (char *)GetNextField(NULL);
+            max_length_qty        = atoi((char *)GetNextField(NULL));
+            field_default_txt     = (char *)GetNextField(NULL);
+            default_type_code     = atoi((char *)GetNextField(NULL));
+            usage_code            = atoi((char *)GetNextField(NULL));
+            field_format_txt      = (char *)GetNextField(NULL);
+            signature_req_ind     = (char *)GetNextField(NULL);
+            memset(chknull, '\0', sizeof(chknull));
+            sprintf(chknull, "%s", GetNextField(NULL));
+            if (risnull(CCHARTYPE, &chknull[0]))
+                rsetnull(CINTTYPE, (char *)&pre_sepr_char_nbr);
+            else
+                pre_sepr_char_nbr = atoi(chknull);
 
-        if count == 0 {
-            pcp.logger.Error("No existing plans, hence skipping phm carr file processing", constants.LoggingKeyCarrierCoId, phmCarr.CarrierCoId, constants.LoggingKeyInsCarrPlanId, phmCarr.InsCarrPlanId)
-            return true, fmt.Errorf("skipping phmCarr record processing as plan does not exist with CarrierCoId: %d and InsCarrPlanId: %d", phmCarr.CarrierCoId, phmCarr.InsCarrPlanId)
-        }
+            memset(chknull, '\0', sizeof(chknull));
+            sprintf(chknull, "%s", GetNextField(NULL));
+            if (risnull(CCHARTYPE, &chknull[0]))
+                rsetnull(CINTTYPE, (char *)&post_sepr_char_nbr);
+            else
+                post_sepr_char_nbr = atoi(chknull);
 
-        if count > 0 {
-            phmCarr.ProviderNbr, err = pcp.processProviderDetails(pcp.ctx, pcp.tx, phmCarr.CarrierCoId, phmCarr.InsCarrPlanId)
-            if err != nil {
-                return false, err
+            field_id_incl_ind     = (char *)GetNextField(NULL);
+
+            if (strlen(field_default_txt) <= 0)
+            {
+                memset(field_default_txt, '\0', sizeof(field_default_txt));
+                strcpy(field_default_txt, " ");
             }
 
-            if err = pcp.updatePhmCarrRecord(pcp.ctx, pcp.tx, phmCarr); err != nil {
-                return false, err
+            if (gEntity == 3001)
+            {
+                if(DoOld)
+                {
+                    EXEC SQL
+                    EXECUTE p_ins_submn_rqst
+                    USING   :submn_rqmt_code,
+                            :seq_nbr,
+                            :claim_part_code,
+                            :claim_segment_code,
+                            :group_id,
+                            :field_nbr,
+                            :field_id,
+                            :max_length_qty,
+                            :field_default_txt,
+                            :default_type_code,
+                            :usage_code,
+                            :field_format_txt,
+                            :signature_req_ind,
+                            :pre_sepr_char_nbr,
+                            :post_sepr_char_nbr,
+                            :field_id_incl_ind;
+
+                    if(SQLCODE != 0)
+                    {
+                        retcode = sqlca.sqlcode;
+                        sprintf(cLogMsg,"ERROR:EXECUTE p_ins_submn_rqst. Line# %d (submn_rqmt_rqst) "
+                                    " Error:[%d]", linecnt, sqlca.sqlcode);
+                        write_log(cLogMsg, LOG_ERROR, gPkgTrId, cFuncName);
+                        strcpy(gTableName, "submn_rqmt_rqst");
+                        gApplyError = retcode;
+
+                        sprintf(cLogMsg, "submn_rqmt_code [%i]", submn_rqmt_code);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "seq_nbr [%i]", seq_nbr);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "claim_part_code [%i]", claim_part_code);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "claim_segment_code [%i]", claim_segment_code);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "group_id [%i]", group_id);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "field_nbr [%i]", field_nbr);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "field_id [%s]", field_id);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "max_length_qty [%i]", max_length_qty);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "field_default_txt [%s]", field_default_txt);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "default_type_code [%i]", default_type_code);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "usage_code [%i]", usage_code);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "field_format_txt [%s]", field_format_txt);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "signature_req_ind [%s]", signature_req_ind);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "pre_sepr_char_nbr [%i]", pre_sepr_char_nbr);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "post_sepr_char_nbr [%i]", post_sepr_char_nbr);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+                        sprintf(cLogMsg, "field_id_incl_ind [%s]", field_id_incl_ind);
+                        write_log(cLogMsg, LOG_INFO, gPkgTrId, cFuncName);
+
+                        break;
+                    }
+                }
+
+                if(DoNew)
+                {
+                    EXEC SQL
+                    EXECUTE p_ins_d0_submn_rqst
+                    USING   :submn_rqmt_code,
+                            :seq_nbr,
+                            :claim_part_code,
+                            :claim_segment_code,
+                            :group_id,
+                            :field_nbr,
+                            :field_id,
+                            :max_length_qty,
+                            :field_default_txt,
+                            :default_type_code,
+                            :usage_code,
+                            :field_format_txt,
+                            :signature_req_ind,
+                            :pre_sepr_char_nbr,
+                            :post_sepr_char_nbr,
+                            :field_id_incl_ind;
+
+                    if(SQLCODE != 0)
+                    {
+                        retcode = sqlca.sqlcode;
+                        sprintf(cLogMsg,"ERROR:EXECUTE p_ins_d0_submn_rqst. Line# %d (submn_rqmt_rqst) Error:[%d]", \
+                            linecnt, sqlca.sqlcode);
+                        write_log(cLogMsg, LOG_ERROR, gPkgTrId, cFuncName);
+                        memset(gTableName, '\0', sizeof(gTableName));
+                        sprintf(gTableName, "%s:submn_rqmt_rqst", gD0DB);
+                        gApplyError = retcode;
+                        break;
+                    }
+                }
+            }
+            if (gEntity == 3101)
+            {
+                EXEC SQL EXECUTE p_ins_tmp_submnrqst USING :submn_rqmt_code,
+                :seq_nbr, :claim_part_code, :claim_segment_code, :group_id, :field_nbr,
+                :field_id, :max_length_qty, :field_default_txt, :default_type_code,
+                :usage_code, :field_format_txt, :signature_req_ind, :pre_sepr_char_nbr,
+                :post_sepr_char_nbr, :field_id_incl_ind;
+                if (sqlca.sqlcode != 0)
+                {
+                    retcode = sqlca.sqlcode;
+                    sprintf(cLogMsg,"ERROR:EXECUTE p_ins_tmp_submnrqst. Line# %d (submn_rqmt_rqst) "
+                                    " Error:[%d]", linecnt, sqlca.sqlcode);
+                    write_log(cLogMsg, LOG_ERROR, gPkgTrId, cFuncName);
+                    strcpy(gTableName, "submn_rqmt_rqst");
+                    gApplyError = retcode;
+                    break;
+                }
             }
         }
+        fclose(unlFile);
     }
-    return true, nil
-}
-
-func (pcp *PhmCarrProcessor) processProviderDetails(ctx context.Context, tx *sql.Tx, carrierCoId, insCarrPlanId int) (int, error) {
-    providerNbr, err := pcp.repository.GetProvider(ctx, tx, carrierCoId, insCarrPlanId)
-    if err != nil {
-        pcp.logger.Error("Error getting provider", constants.LoggingKeyCarrierCoId, carrierCoId, constants.LoggingKeyInsCarrPlanId, insCarrPlanId)
-        return 0, err
-    }
-    return providerNbr, nil
-}
-
-func (pcp *PhmCarrProcessor) updatePhmCarrRecord(ctx context.Context, tx *sql.Tx, phmCarr *PhmCarr) error {
-    if err := pcp.repository.DeletePhmCarr(ctx, tx, phmCarr.CarrierCoId, phmCarr.InsCarrPlanId); err != nil {
-        pcp.logger.Error("Error deleting phm carr", constants.LoggingKeyCarrierCoId, phmCarr.CarrierCoId, constants.LoggingKeyInsCarrPlanId, phmCarr.InsCarrPlanId)
-        return err
-    }
-
-    if err := pcp.repository.InsertPhmCarr(ctx, tx, phmCarr); err != nil {
-        pcp.logger.Error("Error inserting phm carr", constants.LoggingKeyCarrierCoId, phmCarr.CarrierCoId, constants.LoggingKeyInsCarrPlanId, phmCarr.InsCarrPlanId)
-        return err
-    }
-
-    return nil
+    write_log("Function End", LOG_TIMINGS, gPkgTrId, cFuncName);
+    return retcode;
 }
