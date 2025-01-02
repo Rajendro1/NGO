@@ -1,0 +1,151 @@
+package fileprocessorfactory
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log/slog"
+	"strconv"
+	"strings"
+
+	"gecgithub01.walmart.com/CustomerTechnologies/claimFmtDataApply/internal/constants"
+	"gecgithub01.walmart.com/CustomerTechnologies/claimFmtDataApply/internal/models"
+	"gecgithub01.walmart.com/CustomerTechnologies/claimFmtDataApply/internal/utils"
+)
+
+type ProcFamRqstTypeProcessor struct {
+	ctx                 context.Context
+	tx                  *sql.Tx
+	logger              Logger
+	repository          ProcFamRqstTypeRepo
+	procFamRqstTypeData ProcFamRqstTypeData
+}
+
+type ProcFamRqstTypeData struct {
+	fileUtils    utils.FileUtilMethods
+	fileMetadata models.FileMetadata
+	famNbr       int
+}
+type ProcFamRqstTypeRepo interface {
+	InsertProcFamRqstType(ctx context.Context, tx *sql.Tx, procFamRqstType *models.ProcFamRqstType) error
+	InsertProcFamRqstTypeD0(ctx context.Context, tx *sql.Tx, procFamRqstType *models.ProcFamRqstType) error
+	InsertDataIntoProcFamRqstTypeTempTable(ctx context.Context, tx *sql.Tx, procFamRqstType *models.ProcFamRqstType) error
+}
+
+func NewProcFamRqstTypeData(fileUtils utils.FileUtilMethods, fileMetadata models.FileMetadata, famNbr int) ProcFamRqstTypeData {
+	return ProcFamRqstTypeData{fileUtils: fileUtils, fileMetadata: fileMetadata, famNbr: famNbr}
+}
+
+func NewProcFamRqstTypeProcessor(ctx context.Context, tx *sql.Tx, logger Logger, repository ProcFamRqstTypeRepo, procFamRqstTypeData ProcFamRqstTypeData) *ProcFamRqstTypeProcessor {
+	return &ProcFamRqstTypeProcessor{ctx: ctx, tx: tx, logger: logger, repository: repository, procFamRqstTypeData: procFamRqstTypeData}
+}
+func (fp *ProcFamRqstTypeProcessor) Process(packageDir string) error {
+	unlFile := fmt.Sprintf(constants.UnlFileProcFamRqstType, packageDir, fp.procFamRqstTypeData.fileMetadata.FileId)
+
+	//TODO gcCFVersion will load from file hcf_pkg_%d_submn_rqmt.unl which is processed in load_claim_format
+	cCFVersion := ""
+	//TODO gSubjArea will load from start when we loop through all subject area
+	subjArea := 0
+	doOld := GetDoOldValue(cCFVersion, subjArea)
+	doNew := GetDoNewValue(cCFVersion, subjArea)
+
+	fp.logger.Info("Loading unl file", constants.LoggingKeyUnlFileName, unlFile, constants.LoggingKeyFileId, fp.procFamRqstTypeData.fileMetadata.FileId)
+	fileData, err := fp.procFamRqstTypeData.fileUtils.ReadUnlFiledata(unlFile)
+	if err != nil {
+		fp.logger.Error("Error loading the unl file", constants.LoggingKeyUnlFileName, unlFile, slog.Any(constants.ErrorConst, err), slog.Any(constants.SplunkText, constants.SplunkEnable))
+		return err
+	}
+
+	entityList, err := GetProcFamRqstTypeEntityList(fileData)
+	if err != nil {
+		fp.logger.Error("Error creating ProcFamRqstType object", slog.Any(constants.Rows, fileData), slog.Any(constants.ErrorConst, err), slog.Any(constants.SplunkText, constants.SplunkEnable))
+		return err
+	}
+
+	fp.logger.Info(constants.SuccessfullyReadsFileContent, "entityList", entityList)
+
+	if fp.procFamRqstTypeData.fileMetadata.EntityId == constants.CalimFormatEntityCode {
+		for _, row := range entityList {
+			if fp.procFamRqstTypeData.famNbr != row.ProcessFamNbr {
+				fp.logger.Error("Error Process fam nbr in does not match", constants.LoggingKeyUnlFileName, unlFile, slog.Any("famNbr", fp.procFamRqstTypeData.famNbr), slog.Any(constants.SplunkText, constants.SplunkEnable))
+				break
+			}
+
+			if doOld {
+				err = fp.repository.InsertProcFamRqstType(fp.ctx, fp.tx, row)
+				if err != nil {
+					fp.logger.Error("Error while InsertProcFamRqstType", slog.Any(constants.Row, row), slog.Any(constants.ErrorConst, err), slog.Any(constants.SplunkText, constants.SplunkEnable))
+					break
+				}
+			}
+
+			if doNew {
+				err = fp.repository.InsertProcFamRqstTypeD0(fp.ctx, fp.tx, row)
+				if err != nil {
+					fp.logger.Error("Error while InsertProcFamRqstTypeD0", slog.Any(constants.Row, row), slog.Any(constants.ErrorConst, err), slog.Any(constants.SplunkText, constants.SplunkEnable))
+					return err
+				}
+			}
+		}
+	}
+
+	if fp.procFamRqstTypeData.fileMetadata.EntityId == constants.NsCalimFormatEntityCode {
+
+		for _, row := range entityList {
+			if err := fp.repository.InsertDataIntoProcFamRqstTypeTempTable(fp.ctx, fp.tx, row); err != nil {
+				break
+			}
+		}
+	}
+
+	fp.logger.Info(constants.SuccessfullyProcessedFile, constants.LoggingKeyUnlFileName, unlFile, constants.RecordLength, len(fileData), slog.Any(constants.SplunkText, constants.SplunkEnable))
+	return err
+}
+
+func GetProcFamRqstTypeEntityList(rows [][]string) ([]*models.ProcFamRqstType, error) {
+
+	entityList := make([]*models.ProcFamRqstType, 0, len(rows))
+
+	for _, entry := range rows {
+		if len(entry) < constants.ExpectedColumnsProcFamRqstType {
+			return nil, fmt.Errorf("can not create ProcFamRqstType, not enough field in file entry:%s", entry)
+		}
+
+		processFamNbr, err := strconv.Atoi(entry[0])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing processFamNbr: %w", err)
+		}
+		txnType, err := strconv.Atoi(entry[1])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing txnType: %w", err)
+		}
+		requestType, err := strconv.Atoi(entry[2])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing requestType: %w", err)
+		}
+		sourceCode, err := strconv.Atoi(entry[3])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing sourceCode: %w", err)
+		}
+		submnCodeNbr, err := strconv.Atoi(entry[4])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing submnCodeNbr: %w", err)
+		}
+		usageCode, err := strconv.Atoi(entry[5])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing usageCode: %w", err)
+		}
+
+		entityList = append(entityList, &models.ProcFamRqstType{
+			ProcessFamNbr: processFamNbr,
+			TxnType:       txnType,
+			RequestType:   requestType,
+			SourceCode:    sourceCode,
+			SubmnCodeNbr:  submnCodeNbr,
+			UsageCode:     usageCode,
+			RqstDesc:      strings.TrimSpace(entry[6]),
+		})
+	}
+
+	return entityList, nil
+}
