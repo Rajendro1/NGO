@@ -151,12 +151,13 @@ func GetSubmnRqstList(rows [][]string) ([]*models.SubmnRqst, error) {
 // Repository Implementation
 type SubmnRqstRepository struct{}
 
-func (r *SubmnRqstRepository) InsertSubmnRqst(ctx context.Context, tx *sql.Tx, submnRqst *models.SubmnRqst) error {
-	query := `INSERT INTO submn_rqst (submn_rqmt_code, seq_nbr, claim_part_code, claim_segment_code, group_id, usage_code, field_id, field_default_txt)
+func (r *SubmnRqstRepository) InsertSubmnRqstD0(ctx context.Context, tx *sql.Tx, submnRqst *models.SubmnRqst) error {
+	query := `INSERT INTO submn_rqst_d0 (submn_rqmt_code, seq_nbr, claim_part_code, claim_segment_code, group_id, usage_code, field_id, field_default_txt)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 	_, err := tx.ExecContext(ctx, query, submnRqst.SubmnRqmtCode, submnRqst.SeqNbr, submnRqst.ClaimPartCode, submnRqst.ClaimSegmentCode, submnRqst.GroupId, submnRqst.UsageCode, submnRqst.FieldId, submnRqst.FieldDefaultTxt)
 	return err
 }
+
 
 // InsertSubmnRqstTemp inserts data into the temporary table submn_rqst_temp
 func (r *SubmnRqstRepository) InsertSubmnRqstTemp(ctx context.Context, tx *sql.Tx, submnRqst *models.SubmnRqst) error {
