@@ -13,7 +13,16 @@ import (
 	"yourproject/internal/models"
 	"yourproject/internal/utils"
 )
-
+type SubmnRqst struct {
+    SubmnRqmtCode    int
+    SeqNbr           int
+    ClaimPartCode    int
+    ClaimSegmentCode int
+    GroupId          int
+    UsageCode        int
+    FieldId          string
+    FieldDefaultTxt  string
+}
 type SubmnRqstProcessor struct {
 	ctx        context.Context
 	tx         *sql.Tx
