@@ -1,177 +1,206 @@
-// main.go
-package main
+```
+package fileprocessorfactory
 
 import (
-	"bufio"
+	"context"
 	"database/sql"
-	"errors"
 	"fmt"
-	"log"
-	"os"
+	"log/slog"
 	"strconv"
 	"strings"
+
+	"yourproject/internal/constants"
+	"yourproject/internal/models"
+	"yourproject/internal/utils"
 )
 
-// SQLExecutor is the interface for executing SQL statements.
-type SQLExecutor interface {
-	InsertOldSubmnRqst(data *SubmissionRequest) error
-	InsertNewSubmnRqst(data *SubmissionRequest) error
-	InsertTempSubmnRqst(data *SubmissionRequest) error
+type SubmnRqstProcessor struct {
+	ctx        context.Context
+	tx         *sql.Tx
+	logger     Logger
+	repository SubmnRqstRepo
+	fileData   SubmnRqstFileData
 }
 
-// SubmissionRequest holds data parsed from the input file.
-type SubmissionRequest struct {
-	SubmnRqmtCode     int
-	SeqNbr            int
-	ClaimPartCode     int
-	ClaimSegmentCode  int
-	GroupID           int
-	FieldNbr          int
-	FieldID           string
-	MaxLengthQty      int
-	FieldDefaultTxt   string
-	DefaultTypeCode   int
-	UsageCode         int
-	FieldFormatTxt    string
-	SignatureReqInd   string
-	PreSeprCharNbr    *int
-	PostSeprCharNbr   *int
-	FieldIDInclInd    string
+type SubmnRqstFileData struct {
+	fileUtils    utils.FileUtilMethods
+	fileMetadata models.FileMetadata
+	entityId     int
 }
 
-// Logger interface for logging.
-type Logger interface {
-	LogInfo(message string)
-	LogError(err error)
+type SubmnRqstRepo interface {
+	InsertSubmnRqst(ctx context.Context, tx *sql.Tx, submnRqst *models.SubmnRqst) error
+	InsertSubmnRqstD0(ctx context.Context, tx *sql.Tx, submnRqst *models.SubmnRqst) error
+	InsertSubmnRqstTemp(ctx context.Context, tx *sql.Tx, submnRqst *models.SubmnRqst) error
 }
 
-// SimpleLogger logs to stdout.
-type SimpleLogger struct{}
-
-func (l *SimpleLogger) LogInfo(message string) {
-	log.Println("INFO:", message)
+func NewSubmnRqstFileData(fileUtils utils.FileUtilMethods, fileMetadata models.FileMetadata, entityId int) SubmnRqstFileData {
+	return SubmnRqstFileData{fileUtils: fileUtils, fileMetadata: fileMetadata, entityId: entityId}
 }
 
-func (l *SimpleLogger) LogError(err error) {
-	log.Println("ERROR:", err)
+func NewSubmnRqstProcessor(ctx context.Context, tx *sql.Tx, logger Logger, repository SubmnRqstRepo, fileData SubmnRqstFileData) *SubmnRqstProcessor {
+	return &SubmnRqstProcessor{ctx: ctx, tx: tx, logger: logger, repository: repository, fileData: fileData}
 }
 
-// FileProcessor processes the input file.
-type FileProcessor struct {
-	SQLExecutor SQLExecutor
-	Logger      Logger
-}
+func (sp *SubmnRqstProcessor) Process(packageDir string) error {
+	unlFile := fmt.Sprintf(constants.UnlFileSubmnRqst, packageDir, sp.fileData.fileMetadata.FileId)
 
-// LoadSubmissionRequest processes the file and inserts data into the database.
-func (fp *FileProcessor) LoadSubmissionRequest(filePath string, isOld bool, isNew bool, entity int) error {
-	file, err := os.Open(filePath)
+	// Determine processing flags
+	cCFVersion := ""
+	subjArea := 0
+	doOld := GetDoOldValue(cCFVersion, subjArea)
+	doNew := GetDoNewValue(cCFVersion, subjArea)
+
+	sp.logger.Info("Loading UNL file", constants.LoggingKeyUnlFileName, unlFile, constants.LoggingKeyFileId, sp.fileData.fileMetadata.FileId)
+	fileData, err := sp.fileData.fileUtils.ReadUnlFiledata(unlFile)
 	if err != nil {
-		return fmt.Errorf("failed to open file %s: %w", filePath, err)
+		sp.logger.Error("Error loading the UNL file", constants.LoggingKeyUnlFileName, unlFile, slog.Any(constants.ErrorConst, err))
+		return err
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	lineCnt := 0
+	submnRqsts, err := GetSubmnRqstList(fileData)
+	if err != nil {
+		sp.logger.Error("Error creating SubmnRqst object", slog.Any(constants.Rows, fileData), slog.Any(constants.ErrorConst, err))
+		return err
+	}
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		fields := strings.Split(line, ",")
-		if len(fields) < 15 {
-			fp.Logger.LogError(errors.New("insufficient fields in line"))
-			continue
-		}
-
-		data, err := parseSubmissionRequest(fields)
-		if err != nil {
-			fp.Logger.LogError(fmt.Errorf("failed to parse line %d: %w", lineCnt, err))
-			continue
-		}
-
-		if entity == 3001 {
-			if isOld {
-				if err := fp.SQLExecutor.InsertOldSubmnRqst(data); err != nil {
-					fp.Logger.LogError(fmt.Errorf("failed to insert old submission request: %w", err))
-					continue
+	for _, submnRqst := range submnRqsts {
+		if sp.fileData.entityId == constants.ClaimFormatEntityCode {
+			if doOld {
+				if err := sp.repository.InsertSubmnRqst(sp.ctx, sp.tx, submnRqst); err != nil {
+					sp.logger.Error("Error inserting SubmnRqst", slog.Any(constants.Row, submnRqst), slog.Any(constants.ErrorConst, err))
+					break
 				}
 			}
-			if isNew {
-				if err := fp.SQLExecutor.InsertNewSubmnRqst(data); err != nil {
-					fp.Logger.LogError(fmt.Errorf("failed to insert new submission request: %w", err))
-					continue
+			if doNew {
+				if err := sp.repository.InsertSubmnRqstD0(sp.ctx, sp.tx, submnRqst); err != nil {
+					sp.logger.Error("Error inserting SubmnRqstD0", slog.Any(constants.Row, submnRqst), slog.Any(constants.ErrorConst, err))
+					return err
 				}
 			}
-		} else if entity == 3101 {
-			if err := fp.SQLExecutor.InsertTempSubmnRqst(data); err != nil {
-				fp.Logger.LogError(fmt.Errorf("failed to insert temp submission request: %w", err))
-				continue
+		}
+		if sp.fileData.entityId == constants.NsClaimFormatEntityCode {
+			if err := sp.repository.InsertSubmnRqstTemp(sp.ctx, sp.tx, submnRqst); err != nil {
+				sp.logger.Error("Error inserting SubmnRqstTemp", slog.Any(constants.Row, submnRqst), slog.Any(constants.ErrorConst, err))
+				break
 			}
 		}
-
-		lineCnt++
 	}
 
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading file: %w", err)
-	}
-
-	fp.Logger.LogInfo("File processed successfully")
+	sp.logger.Info(constants.SuccessfullyProcessedFile, constants.LoggingKeyUnlFileName, unlFile, constants.RecordLength, len(fileData))
 	return nil
 }
 
-// parseSubmissionRequest parses a line into a SubmissionRequest.
-func parseSubmissionRequest(fields []string) (*SubmissionRequest, error) {
-	toInt := func(s string) (int, error) {
-		return strconv.Atoi(strings.TrimSpace(s))
-	}
+func GetSubmnRqstList(rows [][]string) ([]*models.SubmnRqst, error) {
+	submnRqsts := make([]*models.SubmnRqst, 0, len(rows))
 
-	submnRqmtCode, err := toInt(fields[0])
-	if err != nil {
-		return nil, fmt.Errorf("invalid SubmnRqmtCode: %w", err)
-	}
-	seqNbr, err := toInt(fields[1])
-	if err != nil {
-		return nil, fmt.Errorf("invalid SeqNbr: %w", err)
-	}
-	// Similar parsing for other numeric fields...
-
-	data := &SubmissionRequest{
-		SubmnRqmtCode:   submnRqmtCode,
-		SeqNbr:          seqNbr,
-		FieldID:         fields[6],
-		FieldDefaultTxt: fields[8],
-		FieldIDInclInd:  fields[14],
-	}
-
-	// Optional fields (PreSeprCharNbr, PostSeprCharNbr):
-	if fields[12] != "" {
-		val, err := toInt(fields[12])
-		if err != nil {
-			return nil, fmt.Errorf("invalid PreSeprCharNbr: %w", err)
+	for _, entry := range rows {
+		if len(entry) < constants.ExpectedColumnsSubmnRqst {
+			return nil, fmt.Errorf("insufficient fields in file entry: %s", entry)
 		}
-		data.PreSeprCharNbr = &val
-	}
-	if fields[13] != "" {
-		val, err := toInt(fields[13])
+
+		submnRqmtCode, err := strconv.Atoi(entry[0])
 		if err != nil {
-			return nil, fmt.Errorf("invalid PostSeprCharNbr: %w", err)
+			return nil, fmt.Errorf("error parsing submnRqmtCode: %w", err)
 		}
-		data.PostSeprCharNbr = &val
+		seqNbr, err := strconv.Atoi(entry[1])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing seqNbr: %w", err)
+		}
+		claimPartCode, err := strconv.Atoi(entry[2])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing claimPartCode: %w", err)
+		}
+		claimSegmentCode, err := strconv.Atoi(entry[3])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing claimSegmentCode: %w", err)
+		}
+		groupId, err := strconv.Atoi(entry[4])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing groupId: %w", err)
+		}
+		usageCode, err := strconv.Atoi(entry[5])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing usageCode: %w", err)
+		}
+
+		submnRqsts = append(submnRqsts, &models.SubmnRqst{
+			SubmnRqmtCode:    submnRqmtCode,
+			SeqNbr:           seqNbr,
+			ClaimPartCode:    claimPartCode,
+			ClaimSegmentCode: claimSegmentCode,
+			GroupId:          groupId,
+			UsageCode:        usageCode,
+			FieldId:          strings.TrimSpace(entry[6]),
+			FieldDefaultTxt:  strings.TrimSpace(entry[7]),
+		})
 	}
 
-	return data, nil
+	return submnRqsts, nil
 }
 
-func main() {
-	sqlExecutor := &MySQLExecutor{} // Implement this in sql.go.
-	logger := &SimpleLogger{}
+// Repository Implementation
+type SubmnRqstRepository struct{}
 
-	processor := &FileProcessor{
-		SQLExecutor: sqlExecutor,
-		Logger:      logger,
-	}
-
-	filePath := "data.csv"
-	if err := processor.LoadSubmissionRequest(filePath, true, false, 3001); err != nil {
-		log.Fatalf("failed to load submission request: %v", err)
-	}
+func (r *SubmnRqstRepository) InsertSubmnRqst(ctx context.Context, tx *sql.Tx, submnRqst *models.SubmnRqst) error {
+	query := `INSERT INTO submn_rqst (submn_rqmt_code, seq_nbr, claim_part_code, claim_segment_code, group_id, usage_code, field_id, field_default_txt)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err := tx.ExecContext(ctx, query, submnRqst.SubmnRqmtCode, submnRqst.SeqNbr, submnRqst.ClaimPartCode, submnRqst.ClaimSegmentCode, submnRqst.GroupId, submnRqst.UsageCode, submnRqst.FieldId, submnRqst.FieldDefaultTxt)
+	return err
 }
+
+// InsertSubmnRqstTemp inserts data into the temporary table submn_rqst_temp
+func (r *SubmnRqstRepository) InsertSubmnRqstTemp(ctx context.Context, tx *sql.Tx, submnRqst *models.SubmnRqst) error {
+	query := `INSERT INTO submn_rqst_temp (submn_rqmt_code, seq_nbr, claim_part_code, claim_segment_code, group_id, usage_code, field_id, field_default_txt)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err := tx.ExecContext(ctx, query, submnRqst.SubmnRqmtCode, submnRqst.SeqNbr, submnRqst.ClaimPartCode, submnRqst.ClaimSegmentCode, submnRqst.GroupId, submnRqst.UsageCode, submnRqst.FieldId, submnRqst.FieldDefaultTxt)
+	return err
+}
+
+// InsertSubmnRqst inserts data into the main table submn_rqst
+func (r *SubmnRqstRepository) InsertSubmnRqst(ctx context.Context, tx *sql.Tx, submnRqst *models.SubmnRqst) error {
+	query := `INSERT INTO submn_rqst (submn_rqmt_code, seq_nbr, claim_part_code, claim_segment_code, group_id, usage_code, field_id, field_default_txt)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err := tx.ExecContext(ctx, query, submnRqst.SubmnRqmtCode, submnRqst.SeqNbr, submnRqst.ClaimPartCode, submnRqst.ClaimSegmentCode, submnRqst.GroupId, submnRqst.UsageCode, submnRqst.FieldId, submnRqst.FieldDefaultTxt)
+	return err
+}
+
+// FetchSubmnRqstByCode retrieves a submission request by submn_rqmt_code
+func (r *SubmnRqstRepository) FetchSubmnRqstByCode(ctx context.Context, submnRqmtCode int) (*models.SubmnRqst, error) {
+	query := `SELECT submn_rqmt_code, seq_nbr, claim_part_code, claim_segment_code, group_id, usage_code, field_id, field_default_txt
+		FROM submn_rqst WHERE submn_rqmt_code = ?`
+	row := r.db.QueryRowContext(ctx, query, submnRqmtCode)
+
+	var submnRqst models.SubmnRqst
+	err := row.Scan(
+		&submnRqst.SubmnRqmtCode,
+		&submnRqst.SeqNbr,
+		&submnRqst.ClaimPartCode,
+		&submnRqst.ClaimSegmentCode,
+		&submnRqst.GroupId,
+		&submnRqst.UsageCode,
+		&submnRqst.FieldId,
+		&submnRqst.FieldDefaultTxt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &submnRqst, nil
+}
+
+// UpdateSubmnRqst updates an existing submission request
+func (r *SubmnRqstRepository) UpdateSubmnRqst(ctx context.Context, tx *sql.Tx, submnRqst *models.SubmnRqst) error {
+	query := `UPDATE submn_rqst SET seq_nbr = ?, claim_part_code = ?, claim_segment_code = ?, group_id = ?, usage_code = ?, field_id = ?, field_default_txt = ?
+		WHERE submn_rqmt_code = ?`
+	_, err := tx.ExecContext(ctx, query, submnRqst.SeqNbr, submnRqst.ClaimPartCode, submnRqst.ClaimSegmentCode, submnRqst.GroupId, submnRqst.UsageCode, submnRqst.FieldId, submnRqst.FieldDefaultTxt, submnRqst.SubmnRqmtCode)
+	return err
+}
+
+// DeleteSubmnRqst removes a submission request by submn_rqmt_code
+func (r *SubmnRqstRepository) DeleteSubmnRqst(ctx context.Context, tx *sql.Tx, submnRqmtCode int) error {
+	query := `DELETE FROM submn_rqst WHERE submn_rqmt_code = ?`
+	_, err := tx.ExecContext(ctx, query, submnRqmtCode)
+	return err
+}
+
+```
