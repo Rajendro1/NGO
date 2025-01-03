@@ -14,14 +14,22 @@ import (
 	"yourproject/internal/utils"
 )
 type SubmnRqst struct {
-    SubmnRqmtCode    int
-    SeqNbr           int
-    ClaimPartCode    int
-    ClaimSegmentCode int
-    GroupId          int
-    UsageCode        int
-    FieldId          string
-    FieldDefaultTxt  string
+    SubmnRqmtCode     int
+    SeqNbr            int
+    ClaimPartCode     int
+    ClaimSegmentCode  int
+    GroupId           int
+    FieldNbr          int
+    FieldId           string
+    MaxLengthQty      int
+    FieldDefaultTxt   string
+    DefaultTypeCode   int
+    UsageCode         int
+    FieldFormatTxt    string
+    SignatureReqInd   string
+    PreSepCharNbr     int
+    PostSepCharNbr    int
+    FieldIdInclInd    string
 }
 type SubmnRqstProcessor struct {
 	ctx        context.Context
