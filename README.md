@@ -104,48 +104,56 @@ func GetSubmnRqstList(rows [][]string) ([]*models.SubmnRqst, error) {
 	submnRqsts := make([]*models.SubmnRqst, 0, len(rows))
 
 	for _, entry := range rows {
-		if len(entry) < constants.ExpectedColumnsSubmnRqst {
+		if len(entry) < 16 { // Ensure there are enough columns
 			return nil, fmt.Errorf("insufficient fields in file entry: %s", entry)
 		}
 
-		submnRqmtCode, err := strconv.Atoi(entry[0])
+		preSepCharNbr, err := parseNullableInt(entry[13])
 		if err != nil {
-			return nil, fmt.Errorf("error parsing submnRqmtCode: %w", err)
+			return nil, fmt.Errorf("error parsing preSepCharNbr: %w", err)
 		}
-		seqNbr, err := strconv.Atoi(entry[1])
+
+		postSepCharNbr, err := parseNullableInt(entry[14])
 		if err != nil {
-			return nil, fmt.Errorf("error parsing seqNbr: %w", err)
-		}
-		claimPartCode, err := strconv.Atoi(entry[2])
-		if err != nil {
-			return nil, fmt.Errorf("error parsing claimPartCode: %w", err)
-		}
-		claimSegmentCode, err := strconv.Atoi(entry[3])
-		if err != nil {
-			return nil, fmt.Errorf("error parsing claimSegmentCode: %w", err)
-		}
-		groupId, err := strconv.Atoi(entry[4])
-		if err != nil {
-			return nil, fmt.Errorf("error parsing groupId: %w", err)
-		}
-		usageCode, err := strconv.Atoi(entry[5])
-		if err != nil {
-			return nil, fmt.Errorf("error parsing usageCode: %w", err)
+			return nil, fmt.Errorf("error parsing postSepCharNbr: %w", err)
 		}
 
 		submnRqsts = append(submnRqsts, &models.SubmnRqst{
-			SubmnRqmtCode:    submnRqmtCode,
-			SeqNbr:           seqNbr,
-			ClaimPartCode:    claimPartCode,
-			ClaimSegmentCode: claimSegmentCode,
-			GroupId:          groupId,
-			UsageCode:        usageCode,
+			SubmnRqmtCode:    mustAtoi(entry[0]),
+			SeqNbr:           mustAtoi(entry[1]),
+			ClaimPartCode:    mustAtoi(entry[2]),
+			ClaimSegmentCode: mustAtoi(entry[3]),
+			GroupId:          mustAtoi(entry[4]),
+			FieldNbr:         mustAtoi(entry[5]),
 			FieldId:          strings.TrimSpace(entry[6]),
-			FieldDefaultTxt:  strings.TrimSpace(entry[7]),
+			MaxLengthQty:     mustAtoi(entry[7]),
+			FieldDefaultTxt:  strings.TrimSpace(entry[8]),
+			DefaultTypeCode:  mustAtoi(entry[9]),
+			UsageCode:        mustAtoi(entry[10]),
+			FieldFormatTxt:   strings.TrimSpace(entry[11]),
+			SignatureReqInd:  strings.TrimSpace(entry[12]),
+			PreSepCharNbr:    preSepCharNbr,
+			PostSepCharNbr:   postSepCharNbr,
+			FieldIdInclInd:   strings.TrimSpace(entry[15]),
 		})
 	}
 
 	return submnRqsts, nil
+}
+func parseNullableInt(s string) (int, error) {
+    if s == "" || strings.ToLower(s) == "null" {
+        return 0, nil // Return zero if null; adjust if different logic needed
+    }
+    return strconv.Atoi(s)
+}
+
+// Helper function to handle strconv.Atoi repeats
+func mustAtoi(s string) int {
+    i, err := strconv.Atoi(s)
+    if err != nil {
+        log.Fatalf("Error parsing integer from string '%s': %v", s, err)
+    }
+    return i
 }
 
 // Repository Implementation
