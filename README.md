@@ -1,3 +1,4 @@
+`
 func InitMockConfig(t *testing.T, schemaPath string) (sqlmock.Sqlmock, func()) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -93,3 +94,5 @@ func TestCreateUserWithSchemaValidation(t *testing.T) {
 		})
 	}
 }
+
+`
